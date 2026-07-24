@@ -463,42 +463,147 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
 
           {/* Monospace Code Editor Area */}
           <div style={{
-            background: '#010409', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)',
+            background: '#0d1117', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)',
             overflow: 'hidden', display: 'flex', height: '680px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            position: 'relative'
           }}>
             {/* Line Numbers Gutter */}
             <div style={{
-              background: 'rgba(255, 255, 255, 0.02)', borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+              background: '#090d13', borderRight: '1px solid rgba(255, 255, 255, 0.08)',
               padding: '16px 8px 16px 12px', userSelect: 'none', textAlign: 'right',
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 13, lineHeight: 1.6, color: 'var(--text-4)',
-              minWidth: '40px', boxSizing: 'border-box', overflowY: 'hidden'
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 13, lineHeight: 1.6, color: '#484f58',
+              minWidth: '40px', boxSizing: 'border-box', overflowY: 'hidden',
+              flexShrink: 0
             }}>
               {Array.from({ length: Math.max(lineCount, 12) }).map((_, i) => (
                 <div key={i}>{i + 1}</div>
               ))}
             </div>
 
-            {/* Editor Textarea */}
-            <textarea
-              ref={textareaRef}
-              value={editorCode}
-              onChange={e => setEditorCode(e.target.value)}
-              onKeyDown={handleKeyDownLocal}
-              placeholder="// Write or paste your custom code solution here...&#10;// Click 'Save Code' or press Command+S / Ctrl+S to save to your local database."
-              spellCheck={false}
-              style={{
-                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                padding: 16, fontFamily: 'JetBrains Mono, monospace', fontSize: 13, lineHeight: 1.6,
-                color: '#e6edf3', resize: 'none', tabSize: 4, width: '100%', boxSizing: 'border-box'
-              }}
-            />
+            {/* Editor Overlay Container */}
+            <div style={{
+              position: 'relative',
+              flex: 1,
+              height: '100%',
+              overflow: 'hidden'
+            }}>
+              {/* Highlighted Code (Behind Textarea) */}
+              <pre
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  margin: 0,
+                  padding: 16,
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  color: '#c9d1d9',
+                  whiteSpace: 'pre',
+                  overflow: 'auto',
+                  pointerEvents: 'none',
+                  boxSizing: 'border-box',
+                  background: 'transparent'
+                }}
+                ref={el => {
+                  // Custom scroll sync helper
+                  if (el && textareaRef.current) {
+                    const ta = textareaRef.current
+                    const syncScroll = () => {
+                      el.scrollTop = ta.scrollTop
+                      el.scrollLeft = ta.scrollLeft
+                    }
+                    ta.removeEventListener('scroll', ta.dataset.scrollListener as any)
+                    ta.addEventListener('scroll', syncScroll)
+                    ta.dataset.scrollListener = 'true'
+                  }
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: (() => {
+                    const escape = (text: string) => text
+                      .replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+
+                    let code = escape(editorCode)
+
+                    // Basic real-time syntax coloring regex patterns (similar to GitHub Dark theme)
+                    const keywords = [
+                      '#include', 'using', 'namespace', 'std', 'int', 'char', 'float', 'double', 'bool', 'void',
+                      'class', 'struct', 'public', 'private', 'protected', 'virtual', 'override',
+                      'return', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue',
+                      'const', 'static', 'typename', 'template', 'new', 'delete', 'true', 'false',
+                      'import', 'from', 'as', 'def', 'class', 'self', 'lambda', 'and', 'or', 'not', 'in', 'is',
+                      'let', 'var', 'const', 'function', 'console', 'log', 'export', 'default',
+                      'package', 'interface', 'implements', 'extends', 'throws', 'throw', 'try', 'catch', 'finally'
+                    ]
+
+                    // Highlight Strings (double quotes)
+                    code = code.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span style="color: #a5d6ff;">$&</span>')
+
+                    // Highlight Keywords
+                    const keywordRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g')
+                    code = code.replace(keywordRegex, '<span style="color: #ff7b72;">$1</span>')
+
+                    // Highlight Numbers
+                    code = code.replace(/\b\d+\b/g, '<span style="color: #79c0ff;">$&</span>')
+
+                    // Highlight standard types & functions (e.g. std::cout, vector, print)
+                    code = code.replace(/\b(std|cout|cin|endl|vector|string|map|set|list|print|System|out|println|math)\b/g, '<span style="color: #ffa657;">$1</span>')
+
+                    // Highlight single line comments
+                    code = code.replace(/(\/\/|#)(?!.*style=).*$/gm, '<span style="color: #8b949e;">$&</span>')
+
+                    // Highlight multi-line comments
+                    code = code.replace(/\/\*[\s\S]*?\*\//g, '<span style="color: #8b949e;">$&</span>')
+
+                    return code + '\n\n' // padding at the bottom
+                  })()
+                }}
+              />
+
+              {/* Input Area (Textarea - Transparent on top) */}
+              <textarea
+                ref={textareaRef}
+                value={editorCode}
+                onChange={e => setEditorCode(e.target.value)}
+                onKeyDown={handleKeyDownLocal}
+                placeholder="// Write or paste your custom code solution here...&#10;// Click 'Save Code' or press Command+S / Ctrl+S to save to your local database."
+                spellCheck={false}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  padding: 16,
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  color: 'transparent',
+                  caretColor: '#ffffff',
+                  resize: 'none',
+                  tabSize: 4,
+                  boxSizing: 'border-box',
+                  overflow: 'auto',
+                  whiteSpace: 'pre',
+                  WebkitTextFillColor: 'transparent',
+                  display: 'block'
+                }}
+              />
+            </div>
           </div>
 
           {/* Status footer info */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: 11, color: 'var(--text-4)', flexShrink: 0 }}>
             <span>Lines: {lineCount}</span>
-            <span>Database: dev.db (sqlite local)</span>
+            <span>Database: Neon PostgreSQL (production)</span>
           </div>
         </div>
 
