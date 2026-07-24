@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-// Build searchable index from navigation + content summaries
-const SEARCH_DATA = [
+import { DSA_DATA } from '@/lib/dsa-data'
+
+// Base static OS articles
+const OS_ARTICLES = [
   { title: 'Introduction to Operating Systems', section: 'Operating Systems', slug: '/os/introduction', desc: 'What is an OS? Kernel, processes, memory management overview.' },
   { title: 'Process Management', section: 'Operating Systems', slug: '/os/processes', desc: 'Process states, PCB, context switching, creation and termination.' },
   { title: 'CPU Scheduling Algorithms', section: 'Operating Systems', slug: '/os/cpu-scheduling', desc: 'FCFS, SJF, SRTF, Priority, Round Robin — with interactive demos.' },
@@ -20,12 +22,41 @@ export function SearchBar() {
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
 
+  // Dynamically compile search database from static OS articles + DSA Sheets + DSA questions
+  const searchIndex = useMemo(() => {
+    const list = [...OS_ARTICLES]
+
+    // 1. Add DSA Topics (Sheets)
+    for (const phase of Object.values(DSA_DATA)) {
+      for (const topic of phase.topics) {
+        list.push({
+          title: `${topic.icon} ${topic.name} Master Sheet`,
+          section: 'DSA Sheets',
+          slug: `/dsa/${topic.slug}`,
+          desc: `Practice sheet for ${topic.name} containing ${topic.questions.length} curated questions.`
+        })
+
+        // 2. Add individual questions within this topic
+        for (const q of topic.questions) {
+          list.push({
+            title: q.name,
+            section: `DSA Question · ${topic.name}`,
+            slug: `/dsa/${topic.slug}?q=${q.id}`,
+            desc: `Solve "${q.name}" (${q.subtopic}) — difficulty: ${q.difficulty}★.`
+          })
+        }
+      }
+    }
+
+    return list
+  }, [])
+
   const results = query.trim().length > 1
-    ? SEARCH_DATA.filter(d =>
+    ? searchIndex.filter(d =>
         d.title.toLowerCase().includes(query.toLowerCase()) ||
         d.desc.toLowerCase().includes(query.toLowerCase()) ||
         d.section.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 6)
+      ).slice(0, 8)
     : []
 
   useEffect(() => {
