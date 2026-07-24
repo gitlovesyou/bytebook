@@ -145,6 +145,49 @@ export function StarredPageClient() {
         .toc-anchor { transition: color 0.15s; }
         .toc-anchor:hover { color: var(--brand) !important; }
 
+        /* Screen-mode styling for the new HTML structures */
+        .question-container {
+          margin-bottom: 40px;
+        }
+        .question-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 8px;
+          flex-wrap: wrap;
+        }
+        .question-number {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13.5px;
+          font-weight: 800;
+          color: var(--text-4);
+        }
+        .question-title {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 800;
+          color: var(--text);
+        }
+        .metadata-row {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-bottom: 16px;
+          align-items: center;
+        }
+        .badge {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 10px;
+          border-radius: 6px;
+          background: var(--surface-2);
+          color: var(--text-2);
+          border: 1px solid var(--border);
+          display: inline-flex;
+          align-items: center;
+          text-decoration: none;
+        }
+
         /* ── Print: clean notepad / gedit editor light style ── */
         @media print {
           /* Reset backgrounds and enforce high fidelity printing */
@@ -252,12 +295,14 @@ export function StarredPageClient() {
             background: transparent !important;
             white-space: pre-wrap !important;
             overflow: visible !important;
+            color: #1e293b !important; /* Force standard text/operators to be dark slate */
           }
           .code-block-body code,
           .code-block-body span {
             font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
             font-size: 11pt !important;
             line-height: 1.65 !important;
+            color: #1e293b !important; /* Enforce default dark color for generic spans */
           }
 
           /* Match premium syntax colors exactly */
