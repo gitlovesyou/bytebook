@@ -197,6 +197,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
   const [runSuccess, setRunSuccess] = useState<boolean | null>(null)
   const [consoleTab, setConsoleTab] = useState<'input' | 'output'>('input')
   const [showRunner, setShowRunner] = useState<boolean>(true)
+  const [fontSize, setFontSize] = useState<number>(14)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
@@ -440,6 +441,31 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
             </div>
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {/* Font Size Adjusters */}
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--surface-2)' }}>
+                <button
+                  onClick={() => setFontSize(prev => Math.max(10, prev - 1))}
+                  title="Decrease Font Size"
+                  style={{
+                    padding: '3px 8px', border: 'none', background: 'transparent',
+                    color: 'var(--text-3)', fontSize: 10, fontWeight: 800, cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif'
+                  }}
+                >A-</button>
+                <div style={{ padding: '0 4px', fontSize: 9, fontWeight: 800, color: 'var(--text-4)', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', fontFamily: 'JetBrains Mono' }}>
+                  {fontSize}px
+                </div>
+                <button
+                  onClick={() => setFontSize(prev => Math.min(24, prev + 1))}
+                  title="Increase Font Size"
+                  style={{
+                    padding: '3px 8px', border: 'none', background: 'transparent',
+                    color: 'var(--text-3)', fontSize: 10, fontWeight: 800, cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif'
+                  }}
+                >A+</button>
+              </div>
+
               <button
                 onClick={() => setShowRunner(!showRunner)}
                 style={{
@@ -490,7 +516,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
             <div style={{
               background: '#090d13', borderRight: '1px solid rgba(255, 255, 255, 0.08)',
               padding: '16px 8px 16px 12px', userSelect: 'none', textAlign: 'right',
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 13, lineHeight: 1.6, color: '#484f58',
+              fontFamily: 'JetBrains Mono, monospace', fontSize: fontSize, lineHeight: 1.6, color: '#484f58',
               minWidth: '40px', boxSizing: 'border-box', overflowY: 'hidden',
               flexShrink: 0
             }}>
@@ -517,7 +543,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   margin: 0,
                   padding: 16,
                   fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 13,
+                  fontSize: fontSize,
                   lineHeight: 1.6,
                   color: '#c9d1d9',
                   whiteSpace: 'pre',
@@ -607,7 +633,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   outline: 'none',
                   padding: 16,
                   fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 13,
+                  fontSize: fontSize,
                   lineHeight: 1.6,
                   color: 'transparent',
                   caretColor: '#ffffff',
