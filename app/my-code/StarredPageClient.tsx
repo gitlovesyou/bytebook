@@ -301,19 +301,19 @@ export function StarredPageClient() {
           .code-block-body code,
           .code-block-body span {
             font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
-            font-size: 13.5pt !important; /* Bigger readable font size for print */
+            font-size: 14pt !important; /* Enlarge code font to 14pt for high readability */
             line-height: 1.65 !important;
-            color: #000000 !important; /* Enforce default solid black color for generic code text */
+            color: #000000 !important; /* Enforce default solid black color for all spans and tokens */
+            font-weight: normal !important;
+            font-style: normal !important;
           }
 
-          /* Match premium high-contrast syntax colors exactly */
-          .code-block-body span[style*="color: #ff7b72"] { color: #b91c1c !important; font-weight: 700 !important; } /* Keywords (Deep crimson red) */
-          .code-block-body span[style*="color: #a5d6ff"] { color: #15803d !important; font-weight: 500 !important; } /* Strings (Dark Green) */
-          .code-block-body span[style*="color: #8b949e"] { color: #4b5563 !important; font-style: italic !important; } /* Comments (Slate Gray) */
-          .code-block-body span[style*="color: #79c0ff"] { color: #c2410c !important; font-weight: 600 !important; } /* Numbers (Dark Orange) */
-          .code-block-body span[style*="color: #d2a6ff"] { color: #6d28d9 !important; font-weight: 600 !important; } /* Custom Classes/Structs (Dark Purple) */
-          .code-block-body span[style*="color: #ffa657"] { color: #0369a1 !important; font-weight: 600 !important; } /* Standard Types (Dark Blue) */
-          .code-block-body span[style*="color: #dcdcaa"] { color: #000000 !important; } /* Functions */
+          /* Clear all syntax colors on print to ensure everything is pure black */
+          .code-block-body span[style*="color:"] {
+            color: #000000 !important;
+            font-weight: normal !important;
+            font-style: normal !important;
+          }
         }
       `}} />
 
