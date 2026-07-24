@@ -1,0 +1,230 @@
+---
+title: "CPU Scheduling Algorithms"
+description: "Complete guide to FCFS, SJF, SRTF, Priority Scheduling, and Round Robin — with interactive live demos."
+tags: [os, algo]
+order: 3
+readTime: "15 min read"
+prev:
+  label: "Process Management"
+  href: "/os/processes"
+next:
+  label: "Memory Management"
+  href: "/os/memory"
+---
+
+## What is CPU Scheduling?
+
+CPU scheduling is the process by which the OS decides **which process gets the CPU** and for how long. Since only one process can run on a single CPU at a time, the scheduler must make intelligent decisions to maximize efficiency.
+
+:::info[Why does scheduling matter?]
+A poor scheduling algorithm can cause processes to starve, waste CPU time, or increase response time significantly. The right algorithm depends on the workload type.
+:::
+
+### Key Terms
+
+- **Burst Time (BT)**: Total CPU time a process needs
+- **Arrival Time (AT)**: When a process arrives in the ready queue
+- **Completion Time (CT)**: When a process finishes execution
+- **Turnaround Time (TAT)**: CT - AT (total time from arrival to completion)
+- **Waiting Time (WT)**: TAT - BT (time spent waiting in the queue)
+- **Response Time**: Time from arrival to first CPU allocation
+
+---
+
+## First Come First Serve (FCFS)
+
+The simplest scheduling algorithm — processes are executed in the order they arrive.
+
+:::tip[Key Insight]
+FCFS is non-preemptive. Once a process starts, it runs to completion. Simple to implement but suffers from the **Convoy Effect**.
+:::
+
+### How It Works
+
+1. Sort processes by arrival time
+2. Execute each process completely before moving to the next
+3. Calculate completion, turnaround, and waiting times
+
+```cpp
+// FCFS Implementation
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Process {
+    int id, at, bt, ct, tat, wt;
+};
+
+void fcfs(vector<Process>& proc) {
+    // Sort by arrival time
+    sort(proc.begin(), proc.end(), [](const Process& a, const Process& b) {
+        return a.at < b.at;
+    });
+    
+    int time = 0;
+    for (auto& p : proc) {
+        time = max(time, p.at);  // CPU might be idle
+        time += p.bt;
+        p.ct = time;
+        p.tat = p.ct - p.at;
+        p.wt = p.tat - p.bt;
+    }
+}
+
+int main() {
+    vector<Process> proc = {{1,0,5},{2,1,3},{3,2,8},{4,3,6}};
+    fcfs(proc);
+    for (auto& p : proc) {
+        cout << "P" << p.id 
+             << " TAT:" << p.tat 
+             << " WT:" << p.wt << "\n";
+    }
+}
+```
+
+### Convoy Effect
+
+When a long process holds the CPU, all shorter processes pile up in the queue — like cars behind a slow truck. This is the main drawback of FCFS.
+
+---
+
+## Shortest Job First (SJF)
+
+Execute the process with the **smallest burst time** next. Provably optimal for minimizing average waiting time.
+
+:::warning[Non-Preemptive vs Preemptive]
+- **SJF (non-preemptive)**: Once a process starts, it finishes. New shorter jobs must wait.
+- **SRTF (preemptive)**: If a new process arrives with shorter remaining time, it preempts the current one.
+:::
+
+```cpp
+// SJF — Non-Preemptive
+void sjf(vector<Process>& proc) {
+    int n = proc.size(), completed = 0, time = 0;
+    vector<bool> done(n, false);
+    
+    while (completed < n) {
+        int shortest = -1;
+        for (int i = 0; i < n; i++) {
+            if (!done[i] && proc[i].at <= time) {
+                if (shortest == -1 || proc[i].bt < proc[shortest].bt)
+                    shortest = i;
+            }
+        }
+        if (shortest == -1) { time++; continue; }
+        time += proc[shortest].bt;
+        proc[shortest].ct = time;
+        proc[shortest].tat = time - proc[shortest].at;
+        proc[shortest].wt = proc[shortest].tat - proc[shortest].bt;
+        done[shortest] = true;
+        completed++;
+    }
+}
+```
+
+---
+
+## Shortest Remaining Time First (SRTF)
+
+The preemptive version of SJF. At every time unit, the process with the **shortest remaining burst time** gets the CPU.
+
+```cpp
+// SRTF — Preemptive SJF
+void srtf(vector<Process>& proc) {
+    int n = proc.size(), time = 0, completed = 0;
+    vector<int> rem(n);
+    for (int i = 0; i < n; i++) rem[i] = proc[i].bt;
+    
+    while (completed < n) {
+        int shortest = -1;
+        for (int i = 0; i < n; i++) {
+            if (proc[i].at <= time && rem[i] > 0) {
+                if (shortest == -1 || rem[i] < rem[shortest])
+                    shortest = i;
+            }
+        }
+        if (shortest == -1) { time++; continue; }
+        rem[shortest]--;
+        time++;
+        if (rem[shortest] == 0) {
+            completed++;
+            proc[shortest].ct = time;
+            proc[shortest].tat = time - proc[shortest].at;
+            proc[shortest].wt = proc[shortest].tat - proc[shortest].bt;
+        }
+    }
+}
+```
+
+---
+
+## Round Robin (RR)
+
+Each process gets a fixed **time quantum** of CPU time. When the quantum expires, the process is preempted and added to the back of the queue.
+
+:::tip[Choosing the Quantum]
+- Too small quantum → too much context switching overhead
+- Too large quantum → degenerates to FCFS
+- Typical values: 10–100 ms
+:::
+
+```cpp
+// Round Robin
+void roundRobin(vector<Process>& proc, int quantum) {
+    int n = proc.size(), time = 0, completed = 0;
+    vector<int> rem(n);
+    queue<int> q;
+    vector<bool> inQueue(n, false);
+    
+    for (int i = 0; i < n; i++) rem[i] = proc[i].bt;
+    q.push(0); inQueue[0] = true;
+    
+    while (!q.empty()) {
+        int i = q.front(); q.pop();
+        int execTime = min(quantum, rem[i]);
+        time += execTime;
+        rem[i] -= execTime;
+        
+        // Add newly arrived processes to queue
+        for (int j = 0; j < n; j++) {
+            if (!inQueue[j] && proc[j].at <= time && rem[j] > 0) {
+                q.push(j); inQueue[j] = true;
+            }
+        }
+        if (rem[i] > 0) { q.push(i); }
+        else {
+            proc[i].ct = time;
+            proc[i].tat = time - proc[i].at;
+            proc[i].wt = proc[i].tat - proc[i].bt;
+            completed++;
+        }
+    }
+}
+```
+
+---
+
+## Algorithm Comparison
+
+| Algorithm | Type | Avg Waiting Time | Starvation | Best For |
+|-----------|------|-----------------|-----------|----------|
+| FCFS | Non-preemptive | High | No | Batch systems |
+| SJF | Non-preemptive | Optimal (if BT known) | Yes | Batch with known BT |
+| SRTF | Preemptive | Optimal | Yes | Real-time systems |
+| Round Robin | Preemptive | Medium | No | Interactive / Time-sharing |
+| Priority | Both | Medium | Yes | Systems with process priorities |
+
+---
+
+## Live Interactive Demo
+
+Try the algorithms step-by-step with a visual Gantt chart:
+
+:::demo[CPU Scheduling Visualizer — Step-by-Step](/demos/cpu_deep_viz.html):::
+
+:::info[How to use the demo]
+1. Click **Generate Steps** to create the algorithm trace
+2. Use **Next Step** or **Auto Play** to walk through each time unit
+3. Watch the **Gantt chart**, **Variable Watch**, and **Data Structures** panels update in real time
+:::

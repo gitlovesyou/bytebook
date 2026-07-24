@@ -1,0 +1,16 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Progress {
+  id         Int      @id @default(autoincrement())
+  questionId Int      @unique
+  solved     Boolean  @default(true)
+  revisit    Boolean  @default(false)
+  userCode   String?
+  updatedAt  DateTime @updatedAt
+}
