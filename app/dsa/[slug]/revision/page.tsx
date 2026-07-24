@@ -258,6 +258,12 @@ export default async function DSARevisionPage({ params }: Props) {
             font-weight: 500 !important;
             font-style: normal !important;
           }
+
+          /* Indentation guidelines style for high-quality printing */
+          .indent-guide {
+            border-left: 1.2px dashed #94a3b8 !important;
+            opacity: 0.8 !important;
+          }
         }
       `}} />
 

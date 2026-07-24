@@ -335,7 +335,7 @@ export function EditableCodeBlock({
       const numGuides = Math.floor(lineIndents[idx] / 4)
       let guidesHtml = ''
       for (let g = 0; g < numGuides; g++) {
-        guidesHtml += `<span style="${guideStyle}"></span>`
+        guidesHtml += `<span class="indent-guide" style="${guideStyle}"></span>`
       }
 
       const extraSpacesCount = rawLeading - (numGuides * 4)
