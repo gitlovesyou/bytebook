@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { DSA_DATA } from '@/lib/dsa-data'
 import { prisma } from '@/lib/db'
+import type { Progress } from '@prisma/client'
 import { PrintButton } from '@/components/PrintButton'
 import { highlight } from '@/lib/highlight'
 import { EditableCodeBlock } from '@/components/EditableCodeBlock'
@@ -43,7 +44,7 @@ export default async function DSARevisionPage({ params }: Props) {
     }
   })
 
-  const progressMap = new Map(progressRecords.map((r: { questionId: number; solved: boolean; revisit: boolean; userCode: string | null }) => [r.questionId, r]))
+  const progressMap = new Map<number, Progress>(progressRecords.map(r => [r.questionId, r]))
 
   // Filter only solved (ticked) questions that have code or are marked solved
   const solvedQuestions = topic.questions.filter(q => {
@@ -76,7 +77,7 @@ export default async function DSARevisionPage({ params }: Props) {
   // Sizing config
   const totalQuestions = topic.questions.length
   const solvedCount = solvedQuestions.length
-  const codeCount = progressRecords.filter((r: { userCode: string | null }) => !!r.userCode).length
+  const codeCount = progressRecords.filter(r => !!r.userCode).length
 
   // Difficulty mappings
   const DIFF_STARS = ['', '★☆☆☆☆', '★★☆☆☆', '★★★☆☆', '★★★★☆', '★★★★★']
