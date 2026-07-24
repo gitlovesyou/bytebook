@@ -909,40 +909,29 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     pointerEvents: 'none',
                     boxSizing: 'border-box',
                     background: 'transparent',
-                    backgroundImage: `linear-gradient(to right, transparent calc(4ch - 1px), ${theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.05)'} calc(4ch - 1px), ${theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.05)'} 4ch)`,
-                    backgroundSize: '4ch 100%',
-                    backgroundRepeat: 'repeat-x',
-                    backgroundPosition: '16px 0',
-                    backgroundAttachment: 'local',
                     zIndex: 1
                   }}
                   ref={preRef}
                   dangerouslySetInnerHTML={{
                     __html: (() => {
-                      const escape = (text: string) => text
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
+                      const lines = editorCode.split('\n')
+                      const lineIndents = lines.map(line => {
+                        if (line.trim() === '') return -1
+                        const match = line.match(/^ */)
+                        return match ? match[0].length : 0
+                      })
 
-                      let escaped = escape(editorCode)
-
-                      const KEYWORDS = /\b(using|namespace|struct|class|void|int|char|bool|float|double|long|short|unsigned|return|if|else|for|while|do|switch|case|break|continue|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
-                      const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
-                      const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
-                      const NUMBERS  = /\b(\d+\.?\d*)\b/g
-                      const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
-                      const CUSTOM_TYPES = /\b(Process|Node|TreeNode|ListNode|Solution|Graph|Queue|Stack|Heap)\b/g
-                      const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
-                      const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print|max|min|sort)\b/g
-
-                      type Tok = { start: number; end: number; color: string; content: string }
-                      const tokens: Tok[] = []
-
-                      const addTokens = (re: RegExp, color: string) => {
-                        re.lastIndex = 0
-                        let m: RegExpExecArray | null
-                        while ((m = re.exec(escaped)) !== null) {
-                          tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
+                      for (let i = 0; i < lines.length; i++) {
+                        if (lineIndents[i] === -1) {
+                          let prevIndent = 0
+                          for (let j = i - 1; j >= 0; j--) {
+                            if (lineIndents[j] !== -1) { prevIndent = lineIndents[j]; break; }
+                          }
+                          let nextIndent = 0
+                          for (let j = i + 1; j < lines.length; j++) {
+                            if (lineIndents[j] !== -1) { nextIndent = lineIndents[j]; break; }
+                          }
+                          lineIndents[i] = Math.min(prevIndent, nextIndent)
                         }
                       }
 
@@ -966,59 +955,103 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                         types: '#ffa657'
                       }
 
-                      // Extract types inside template angle brackets: e.g. <Process> or <int>
-                      const templates = /&lt;([a-zA-Z_]\w*)&gt;/g
-                      templates.lastIndex = 0
-                      let tm: RegExpExecArray | null
-                      while ((tm = templates.exec(escaped)) !== null) {
-                        const word = tm[1]
-                        const wordIndex = tm.index + 4 // after "&lt;"
-                        const color = /^(int|char|bool|float|double|void)$/.test(word)
-                          ? syntaxColors.keywords
-                          : (theme === 'light' ? '#24292e' : '#d2a6ff')
-                        tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
-                      }
+                      const guideColor = theme === 'light' ? '#cbd5e1' : 'rgba(255, 255, 255, 0.12)'
+                      const guideStyle = `display: inline-block; width: 4ch; border-left: 1px dashed ${guideColor}; box-sizing: border-box; height: 1.6em; vertical-align: bottom;`
 
-                      // Extract types following class/struct: e.g. struct Process
-                      const structClass = /\b(struct|class)\s+([a-zA-Z_]\w*)\b/g
-                      structClass.lastIndex = 0
-                      let sc: RegExpExecArray | null
-                      while ((sc = structClass.exec(escaped)) !== null) {
-                        const word = sc[2]
-                        const wordIndex = sc.index + sc[1].length + 1
-                        tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#24292e' : '#d2a6ff', content: word })
-                      }
+                      const outputLines = lines.map((line, idx) => {
+                        const rawLeading = (line.match(/^ */) || [''])[0].length
+                        const lineText = line.substring(rawLeading)
 
-                      addTokens(COMMENTS, syntaxColors.comments)
-                      addTokens(STRINGS, syntaxColors.strings)
-                      addTokens(PREPROC, syntaxColors.preproc)
-                      addTokens(KEYWORDS, syntaxColors.keywords)
-                      addTokens(CUSTOM_TYPES, syntaxColors.customTypes)
-                      addTokens(NUMBERS, syntaxColors.numbers)
-                      addTokens(FUNCS, syntaxColors.funcs)
-                      addTokens(TYPES, syntaxColors.types)
+                        const escape = (text: string) => text
+                          .replace(/&/g, '&amp;')
+                          .replace(/</g, '&lt;')
+                          .replace(/>/g, '&gt;')
 
-                      tokens.sort((a, b) => a.start - b.start)
-                      
-                      const noOverlap: Tok[] = []
-                      let cursor = 0
-                      for (const tok of tokens) {
-                        if (tok.start >= cursor) {
-                          noOverlap.push(tok)
-                          cursor = tok.end
+                        let escaped = escape(lineText)
+
+                        const KEYWORDS = /\b(using|namespace|struct|class|void|int|char|bool|float|double|long|short|unsigned|return|if|else|for|while|do|switch|case|break|continue|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
+                        const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
+                        const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
+                        const NUMBERS  = /\b(\d+\.?\d*)\b/g
+                        const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
+                        const CUSTOM_TYPES = /\b(Process|Node|TreeNode|ListNode|Solution|Graph|Queue|Stack|Heap)\b/g
+                        const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
+                        const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print|max|min|sort)\b/g
+
+                        type Tok = { start: number; end: number; color: string; content: string }
+                        const tokens: Tok[] = []
+
+                        const addTokens = (re: RegExp, color: string) => {
+                          re.lastIndex = 0
+                          let m: RegExpExecArray | null
+                          while ((m = re.exec(escaped)) !== null) {
+                            tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
+                          }
                         }
-                      }
 
-                      let result = ''
-                      let pos = 0
-                      for (const tok of noOverlap) {
-                        result += escaped.slice(pos, tok.start)
-                        result += `<span style="color: ${tok.color}">${tok.content}</span>`
-                        pos = tok.end
-                      }
-                      result += escaped.slice(pos)
+                        const templates = /&lt;([a-zA-Z_]\w*)&gt;/g
+                        templates.lastIndex = 0
+                        let tm: RegExpExecArray | null
+                        while ((tm = templates.exec(escaped)) !== null) {
+                          const word = tm[1]
+                          const wordIndex = tm.index + 4
+                          const color = /^(int|char|bool|float|double|void)$/.test(word)
+                            ? syntaxColors.keywords
+                            : (theme === 'light' ? '#24292e' : '#d2a6ff')
+                          tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
+                        }
 
-                      return result + '\n\n'
+                        const structClass = /\b(struct|class)\s+([a-zA-Z_]\w*)\b/g
+                        structClass.lastIndex = 0
+                        let sc: RegExpExecArray | null
+                        while ((sc = structClass.exec(escaped)) !== null) {
+                          const word = sc[2]
+                          const wordIndex = sc.index + sc[1].length + 1
+                          tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#24292e' : '#d2a6ff', content: word })
+                        }
+
+                        addTokens(COMMENTS, syntaxColors.comments)
+                        addTokens(STRINGS, syntaxColors.strings)
+                        addTokens(PREPROC, syntaxColors.preproc)
+                        addTokens(KEYWORDS, syntaxColors.keywords)
+                        addTokens(CUSTOM_TYPES, syntaxColors.customTypes)
+                        addTokens(NUMBERS, syntaxColors.numbers)
+                        addTokens(FUNCS, syntaxColors.funcs)
+                        addTokens(TYPES, syntaxColors.types)
+
+                        tokens.sort((a, b) => a.start - b.start)
+                        
+                        const noOverlap: Tok[] = []
+                        let cursor = 0
+                        for (const tok of tokens) {
+                          if (tok.start >= cursor) {
+                            noOverlap.push(tok)
+                            cursor = tok.end
+                          }
+                        }
+
+                        let tokenizedText = ''
+                        let pos = 0
+                        for (const tok of noOverlap) {
+                          tokenizedText += escaped.slice(pos, tok.start)
+                          tokenizedText += `<span style="color: ${tok.color}">${tok.content}</span>`
+                          pos = tok.end
+                        }
+                        tokenizedText += escaped.slice(pos)
+
+                        const numGuides = Math.floor(lineIndents[idx] / 4)
+                        let guidesHtml = ''
+                        for (let g = 0; g < numGuides; g++) {
+                          guidesHtml += `<span style="${guideStyle}"></span>`
+                        }
+
+                        const extraSpacesCount = rawLeading - (numGuides * 4)
+                        const remainingSpaces = extraSpacesCount > 0 ? ' '.repeat(extraSpacesCount) : ''
+
+                        return guidesHtml + remainingSpaces + tokenizedText
+                      })
+
+                      return outputLines.join('\n') + '\n\n'
                     })()
                   }}
                 />
