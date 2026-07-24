@@ -70,6 +70,32 @@ export function EditableCodeBlock({
       }, 0)
     }
 
+    if (e.key === 'Backspace') {
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      
+      if (start === end) {
+        const val = textarea.value
+        const lastNewline = val.lastIndexOf('\n', start - 1)
+        const lineStart = lastNewline === -1 ? 0 : lastNewline + 1
+        const prefixOfLine = val.substring(lineStart, start)
+        
+        if (prefixOfLine.length > 0 && /^ +$/.test(prefixOfLine)) {
+          e.preventDefault()
+          const len = prefixOfLine.length
+          const rem = len % 4
+          const deleteCount = rem === 0 ? 4 : rem
+          const newVal = val.substring(0, start - deleteCount) + val.substring(end)
+          setCode(newVal)
+          
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start - deleteCount
+          }, 0)
+        }
+      }
+    }
+
     if (e.key === 'Enter') {
       e.preventDefault()
       const textarea = e.currentTarget

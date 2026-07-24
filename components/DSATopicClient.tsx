@@ -199,10 +199,39 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
   const [showRunner, setShowRunner] = useState<boolean>(true)
   const [fontSize, setFontSize] = useState<number>(14)
 
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+  const [activeLine, setActiveLine] = useState<number>(1)
+  const [showSettings, setShowSettings] = useState<boolean>(false)
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
+  const gutterRef = useRef<HTMLDivElement>(null)
+  const highlightRef = useRef<HTMLDivElement>(null)
 
-  // Scroll synchronization between textarea and pre
+  // Track the current theme (data-theme attribute on document.documentElement)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const currentTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' | null
+    if (currentTheme) {
+      setTheme(currentTheme)
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          const nextTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' | null
+          if (nextTheme) {
+            setTheme(nextTheme)
+          }
+        }
+      })
+    })
+
+    observer.observe(document.documentElement, { attributes: true })
+    return () => observer.disconnect()
+  }, [])
+
+  // Scroll synchronization between textarea, pre, gutter, and active line highlight
   useEffect(() => {
     const ta = textareaRef.current
     const pre = preRef.current
@@ -211,9 +240,17 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
     const syncScroll = () => {
       pre.scrollTop = ta.scrollTop
       pre.scrollLeft = ta.scrollLeft
+      if (gutterRef.current) {
+        gutterRef.current.scrollTop = ta.scrollTop
+      }
+      if (highlightRef.current) {
+        highlightRef.current.style.transform = `translateY(${-ta.scrollTop}px)`
+      }
     }
 
     ta.addEventListener('scroll', syncScroll)
+    syncScroll()
+
     return () => {
       ta.removeEventListener('scroll', syncScroll)
     }
@@ -270,6 +307,16 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
     }
   }
 
+  // Copy Code to Clipboard
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(editorCode)
+      alert('Code copied to clipboard!')
+    } catch (err) {
+      console.error('Failed to copy code:', err)
+    }
+  }
+
   // Intercept key down inside the editor for tabs and cmd+s saving
   function handleKeyDownLocal(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Tab') {
@@ -285,6 +332,34 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
           textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 4
         }
       }, 0)
+    }
+
+    if (e.key === 'Backspace') {
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      
+      if (start === end) {
+        const val = textarea.value
+        const lastNewline = val.lastIndexOf('\n', start - 1)
+        const lineStart = lastNewline === -1 ? 0 : lastNewline + 1
+        const prefixOfLine = val.substring(lineStart, start)
+        
+        if (prefixOfLine.length > 0 && /^ +$/.test(prefixOfLine)) {
+          e.preventDefault()
+          const len = prefixOfLine.length
+          const rem = len % 4
+          const deleteCount = rem === 0 ? 4 : rem
+          const newVal = val.substring(0, start - deleteCount) + val.substring(end)
+          setEditorCode(newVal)
+          
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start - deleteCount
+            }
+          }, 0)
+        }
+      }
     }
 
     if (e.key === 'Enter') {
@@ -329,6 +404,48 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
 
   const lineCount = editorCode.split('\n').length
   const activeLinks = PROBLEM_LINKS[active.name] || {}
+
+  const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget
+    const val = textarea.value
+    const selStart = textarea.selectionStart
+    const newlines = val.substring(0, selStart).split('\n')
+    setActiveLine(newlines.length)
+  }
+
+  const iconButtonStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    border: 'none',
+    background: 'transparent',
+    color: theme === 'light' ? '#64748b' : '#8b949e',
+    cursor: 'pointer',
+    transition: 'all 0.15s'
+  }
+
+  const handleIconMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.background = theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.08)'
+    e.currentTarget.style.color = theme === 'light' ? '#0f172a' : '#ffffff'
+  }
+  const handleIconMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.background = 'transparent'
+    e.currentTarget.style.color = theme === 'light' ? '#64748b' : '#8b949e'
+  }
+
+  const menuButtonStyle: React.CSSProperties = {
+    padding: '3px 8px',
+    borderRadius: 4,
+    border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'rgba(255,255,255,0.15)'}`,
+    background: theme === 'light' ? '#f8fafc' : '#0d1117',
+    color: 'var(--text-2)',
+    fontSize: 11,
+    fontWeight: 750,
+    cursor: 'pointer'
+  }
 
   return (
     <div style={{
@@ -409,267 +526,474 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
         
         {/* Solution Editor Section */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                💻 Solution Editor
-              </span>
-              
-              {/* Language Dropdown Selector */}
-              <select
-                value={lang}
-                onChange={(e) => {
-                  const nextLang = e.target.value
-                  setLang(nextLang)
-                  const currentBoilerplates = Object.values(BOILERPLATES)
-                  if (!editorCode.trim() || currentBoilerplates.some(b => b.trim() === editorCode.trim())) {
-                    setEditorCode(BOILERPLATES[nextLang] || '')
-                  }
-                }}
-                style={{
-                  padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)',
-                  background: 'var(--surface-2)', color: 'var(--text-2)', fontSize: 11, fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'Inter, sans-serif', outline: 'none'
-                }}
-              >
-                <option value="cpp">C++17 (g++)</option>
-                <option value="c">C (gcc)</option>
-                <option value="python">Python3 (python3)</option>
-                <option value="javascript">JavaScript (node)</option>
-                <option value="java">Java (java)</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {/* Font Size Adjusters */}
-              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', background: 'var(--surface-2)' }}>
-                <button
-                  onClick={() => setFontSize(prev => Math.max(10, prev - 1))}
-                  title="Decrease Font Size"
-                  style={{
-                    padding: '3px 8px', border: 'none', background: 'transparent',
-                    color: 'var(--text-3)', fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif'
-                  }}
-                >A-</button>
-                <div style={{ padding: '0 4px', fontSize: 9, fontWeight: 800, color: 'var(--text-4)', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', fontFamily: 'JetBrains Mono' }}>
-                  {fontSize}px
-                </div>
-                <button
-                  onClick={() => setFontSize(prev => Math.min(24, prev + 1))}
-                  title="Increase Font Size"
-                  style={{
-                    padding: '3px 8px', border: 'none', background: 'transparent',
-                    color: 'var(--text-3)', fontSize: 10, fontWeight: 800, cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif'
-                  }}
-                >A+</button>
-              </div>
-
-              <button
-                onClick={() => setShowRunner(!showRunner)}
-                style={{
-                  padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
-                  background: showRunner ? 'rgba(99,102,241,0.15)' : 'transparent',
-                  color: showRunner ? 'var(--brand-light)' : 'var(--text-3)',
-                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                  transition: 'all 0.15s'
-                }}
-              >
-                {showRunner ? '🛠️ Hide Console' : '🛠️ Show Console'}
-              </button>
-              <button
-                onClick={handleResetTemplate}
-                style={{
-                  padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
-                  background: 'transparent', color: 'var(--text-3)', fontSize: 11,
-                  fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                  transition: 'all 0.15s'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-2)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                🔄 Reset
-              </button>
-              <span style={{ fontSize: 11, color: 'var(--text-4)' }}>Shortcut: <kbd style={{ fontFamily: 'JetBrains Mono', background: 'var(--surface-2)', padding: '2px 4px', borderRadius: 4, border: '1px solid var(--border)' }}>⌘S</kbd> to save</span>
-              <button onClick={handleSaveLocal} style={{
-                display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700,
-                padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)',
-                background: isSaved ? 'rgba(16,185,129,0.15)' : 'var(--surface-2)',
-                color: isSaved ? '#10b981' : 'var(--text-2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                transition: 'all 0.15s',
-                boxShadow: isSaved ? '0 0 10px rgba(16,185,129,0.1)' : 'none'
-              }}>
-                {isSaved ? '✓ Saved!' : '💾 Save Code'}
-              </button>
-            </div>
-          </div>
-
-          {/* Monospace Code Editor Area */}
+          
+          {/* Unified Editor Component */}
           <div style={{
-            background: '#0d1117', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)',
-            overflow: 'hidden', display: 'flex', height: '680px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            background: theme === 'light' ? '#ffffff' : '#0d1117',
+            borderRadius: 12,
+            border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'rgba(255,255,255,0.08)'}`,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '680px',
+            boxShadow: theme === 'light' ? '0 4px 20px rgba(0,0,0,0.04)' : '0 4px 20px rgba(0,0,0,0.5)',
             position: 'relative'
           }}>
-            {/* Line Numbers Gutter */}
+            {/* Topbar/Header inside the Editor */}
             <div style={{
-              background: '#090d13', borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-              padding: '16px 8px 16px 12px', userSelect: 'none', textAlign: 'right',
-              fontFamily: 'JetBrains Mono, monospace', fontSize: fontSize, lineHeight: 1.6, color: '#484f58',
-              minWidth: '40px', boxSizing: 'border-box', overflowY: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 16px',
+              borderBottom: `1px solid ${theme === 'light' ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)'}`,
+              background: theme === 'light' ? '#f8fafc' : '#090d13',
               flexShrink: 0
             }}>
-              {Array.from({ length: Math.max(lineCount, 12) }).map((_, i) => (
-                <div key={i}>{i + 1}</div>
-              ))}
+              {/* Left Side: Language Select */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <select
+                  value={lang}
+                  onChange={(e) => {
+                    const nextLang = e.target.value
+                    setLang(nextLang)
+                    const currentBoilerplates = Object.values(BOILERPLATES)
+                    if (!editorCode.trim() || currentBoilerplates.some(b => b.trim() === editorCode.trim())) {
+                      setEditorCode(BOILERPLATES[nextLang] || '')
+                    }
+                  }}
+                  style={{
+                    padding: '4px 24px 4px 8px',
+                    borderRadius: 6,
+                    border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'rgba(255,255,255,0.15)'}`,
+                    background: theme === 'light' ? '#ffffff' : '#0d1117',
+                    color: theme === 'light' ? '#334155' : '#c9d1d9',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    outline: 'none',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${theme === 'light' ? '%23334155' : '%23c9d1d9'}' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 8px center',
+                    backgroundSize: '12px'
+                  }}
+                >
+                  <option value="cpp">C++ (17)</option>
+                  <option value="c">C (gcc)</option>
+                  <option value="python">Python (3)</option>
+                  <option value="javascript">JavaScript</option>
+                  <option value="java">Java</option>
+                </select>
+              </div>
+
+              {/* Right Side: Tool Icons */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {/* List/Sidebar toggle */}
+                <button
+                  onClick={() => setIsFocusMode(!isFocusMode)}
+                  onMouseEnter={handleIconMouseEnter}
+                  onMouseLeave={handleIconMouseLeave}
+                  title="Toggle Focus Mode"
+                  style={iconButtonStyle}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                </button>
+
+                {/* Copy Code */}
+                <button
+                  onClick={handleCopy}
+                  onMouseEnter={handleIconMouseEnter}
+                  onMouseLeave={handleIconMouseLeave}
+                  title="Copy Code"
+                  style={iconButtonStyle}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+
+                {/* Problem Link (External) */}
+                {activeLinks.lc && (
+                  <a
+                    href={activeLinks.lc}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open on LeetCode"
+                    style={{
+                      ...iconButtonStyle,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textDecoration: 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.08)'
+                      e.currentTarget.style.color = '#ffa116'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = theme === 'light' ? '#64748b' : '#8b949e'
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m4-3h6v6m-11 5L21 3"/>
+                    </svg>
+                  </a>
+                )}
+
+                {/* Settings Toggle */}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowSettings(!showSettings)}
+                    onMouseEnter={handleIconMouseEnter}
+                    onMouseLeave={(e) => {
+                      if (!showSettings) {
+                        handleIconMouseLeave(e)
+                      }
+                    }}
+                    title="Editor Settings"
+                    style={{
+                      ...iconButtonStyle,
+                      background: showSettings ? (theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.1)') : 'transparent',
+                      color: showSettings ? (theme === 'light' ? '#0f172a' : '#ffffff') : (theme === 'light' ? '#64748b' : '#8b949e')
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                  </button>
+
+                  {/* Settings Menu Popup */}
+                  {showSettings && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: 0,
+                      background: theme === 'light' ? '#ffffff' : '#1e2430',
+                      border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'rgba(255,255,255,0.15)'}`,
+                      borderRadius: 8,
+                      padding: 12,
+                      width: 200,
+                      zIndex: 50,
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Font Size
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <button
+                          onClick={() => setFontSize(prev => Math.max(10, prev - 1))}
+                          style={menuButtonStyle}
+                        >A-</button>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--text)', fontWeight: 'bold' }}>
+                          {fontSize}px
+                        </span>
+                        <button
+                          onClick={() => setFontSize(prev => Math.min(24, prev + 1))}
+                          style={menuButtonStyle}
+                        >A+</button>
+                      </div>
+
+                      <div style={{ borderTop: `1px solid ${theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.08)'}`, paddingTop: 8 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-2)', cursor: 'pointer', userSelect: 'none' }}>
+                          <input
+                            type="checkbox"
+                            checked={showRunner}
+                            onChange={(e) => setShowRunner(e.target.checked)}
+                          />
+                          Show Runner Console
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Reset Code */}
+                <button
+                  onClick={handleResetTemplate}
+                  onMouseEnter={handleIconMouseEnter}
+                  onMouseLeave={handleIconMouseLeave}
+                  title="Reset Template Code"
+                  style={iconButtonStyle}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                </button>
+
+                {/* Fullscreen / Focus Mode */}
+                <button
+                  onClick={() => setIsFocusMode(!isFocusMode)}
+                  onMouseEnter={handleIconMouseEnter}
+                  onMouseLeave={handleIconMouseLeave}
+                  title="Toggle Fullscreen Editor"
+                  style={iconButtonStyle}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                  </svg>
+                </button>
+
+                {/* Save Button */}
+                <button
+                  onClick={handleSaveLocal}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700,
+                    padding: '4px 10px', borderRadius: 6,
+                    border: `1px solid ${isSaved ? '#10b981' : (theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.15)')}`,
+                    background: isSaved
+                      ? 'rgba(16,185,129,0.15)'
+                      : (theme === 'light' ? '#f8fafc' : '#0d1117'),
+                    color: isSaved ? '#10b981' : (theme === 'light' ? '#334155' : '#c9d1d9'),
+                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                    transition: 'all 0.15s',
+                    boxShadow: isSaved ? '0 0 10px rgba(16,185,129,0.1)' : 'none'
+                  }}
+                >
+                  <span>{isSaved ? '✓ Saved' : '💾 Save'}</span>
+                </button>
+              </div>
             </div>
 
-            {/* Editor Overlay Container */}
-            <div style={{
-              position: 'relative',
-              flex: 1,
-              height: '100%',
-              overflow: 'hidden'
-            }}>
-              {/* Highlighted Code (Behind Textarea) */}
-              <pre
+            {/* Editor Workspace (Gutter + Code Input container) */}
+            <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
+              
+              {/* Line Numbers Gutter */}
+              <div
+                ref={gutterRef}
                 style={{
+                  background: theme === 'light' ? '#ffffff' : '#090d13',
+                  borderRight: `1px solid ${theme === 'light' ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)'}`,
+                  padding: '16px 8px 16px 12px', userSelect: 'none', textAlign: 'right',
+                  fontFamily: 'JetBrains Mono, monospace', fontSize: fontSize, lineHeight: 1.6,
+                  color: theme === 'light' ? '#94a3b8' : '#484f58',
+                  minWidth: '46px', boxSizing: 'border-box', overflowY: 'hidden',
+                  flexShrink: 0
+                }}
+              >
+                {Array.from({ length: Math.max(lineCount, 12) }).map((_, i) => {
+                  const isCurrent = i + 1 === activeLine
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        color: isCurrent
+                          ? (theme === 'light' ? '#0f172a' : '#ffffff')
+                          : undefined,
+                        fontWeight: isCurrent ? 'bold' : 'normal',
+                        transition: 'color 0.15s'
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Editor Overlay Container */}
+              <div style={{
+                position: 'relative',
+                flex: 1,
+                height: '100%',
+                overflow: 'hidden'
+              }}>
+                {/* Active Line Highlight Background */}
+                <div style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  width: '100%',
-                  height: '100%',
-                  margin: 0,
-                  padding: 16,
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: fontSize,
-                  lineHeight: 1.6,
-                  color: '#c9d1d9',
-                  whiteSpace: 'pre',
-                  overflow: 'auto',
+                  right: 0,
+                  bottom: 0,
                   pointerEvents: 'none',
-                  boxSizing: 'border-box',
-                  background: 'transparent'
-                }}
-                ref={preRef}
-                dangerouslySetInnerHTML={{
-                  __html: (() => {
-                    const escape = (text: string) => text
-                      .replace(/&/g, '&amp;')
-                      .replace(/</g, '&lt;')
-                      .replace(/>/g, '&gt;')
+                  overflow: 'hidden',
+                  zIndex: 0
+                }}>
+                  <div
+                    ref={highlightRef}
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      height: fontSize * 1.6,
+                      top: 16 + (activeLine - 1) * fontSize * 1.6,
+                      background: theme === 'light' ? '#f1f5f9' : 'rgba(255, 255, 255, 0.04)',
+                      transition: 'top 0.08s ease-out',
+                      zIndex: 0
+                    }}
+                  />
+                </div>
 
-                    let escaped = escape(editorCode)
+                {/* Highlighted Code (Behind Textarea) */}
+                <pre
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    margin: 0,
+                    padding: 16,
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: fontSize,
+                    lineHeight: 1.6,
+                    color: theme === 'light' ? '#24292e' : '#c9d1d9',
+                    whiteSpace: 'pre',
+                    overflow: 'auto',
+                    pointerEvents: 'none',
+                    boxSizing: 'border-box',
+                    background: 'transparent',
+                    zIndex: 1
+                  }}
+                  ref={preRef}
+                  dangerouslySetInnerHTML={{
+                    __html: (() => {
+                      const escape = (text: string) => text
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
 
-                    const KEYWORDS = /\b(using|namespace|struct|class|void|int|char|bool|float|double|long|short|unsigned|return|if|else|for|while|do|switch|case|break|continue|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
-                    const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
-                    const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
-                    const NUMBERS  = /\b(\d+\.?\d*)\b/g
-                    const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
-                    const CUSTOM_TYPES = /\b(Process|Node|TreeNode|ListNode|Solution|Graph|Queue|Stack|Heap)\b/g
-                    const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
-                    const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print|max|min|sort)\b/g
+                      let escaped = escape(editorCode)
 
-                    type Tok = { start: number; end: number; color: string; content: string }
-                    const tokens: Tok[] = []
+                      const KEYWORDS = /\b(using|namespace|struct|class|void|int|char|bool|float|double|long|short|unsigned|return|if|else|for|while|do|switch|case|break|continue|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
+                      const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
+                      const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
+                      const NUMBERS  = /\b(\d+\.?\d*)\b/g
+                      const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
+                      const CUSTOM_TYPES = /\b(Process|Node|TreeNode|ListNode|Solution|Graph|Queue|Stack|Heap)\b/g
+                      const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
+                      const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print|max|min|sort)\b/g
 
-                    const addTokens = (re: RegExp, color: string) => {
-                      re.lastIndex = 0
-                      let m: RegExpExecArray | null
-                      while ((m = re.exec(escaped)) !== null) {
-                        tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
+                      type Tok = { start: number; end: number; color: string; content: string }
+                      const tokens: Tok[] = []
+
+                      const addTokens = (re: RegExp, color: string) => {
+                        re.lastIndex = 0
+                        let m: RegExpExecArray | null
+                        while ((m = re.exec(escaped)) !== null) {
+                          tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
+                        }
                       }
-                    }
 
-                    // Extract types inside template angle brackets: e.g. <Process> or <int>
-                    const templates = /&lt;([a-zA-Z_]\w*)&gt;/g
-                    templates.lastIndex = 0
-                    let tm: RegExpExecArray | null
-                    while ((tm = templates.exec(escaped)) !== null) {
-                      // Match only the inner word
-                      const word = tm[1]
-                      const wordIndex = tm.index + 4 // after "&lt;"
-                      const color = /^(int|char|bool|float|double|void)$/.test(word) ? '#ff7b72' : '#d2a6ff'
-                      tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
-                    }
-
-                    // Extract types following class/struct: e.g. struct Process
-                    const structClass = /\b(struct|class)\s+([a-zA-Z_]\w*)\b/g
-                    structClass.lastIndex = 0
-                    let sc: RegExpExecArray | null
-                    while ((sc = structClass.exec(escaped)) !== null) {
-                      const word = sc[2]
-                      const wordIndex = sc.index + sc[1].length + 1
-                      tokens.push({ start: wordIndex, end: wordIndex + word.length, color: '#d2a6ff', content: word })
-                    }
-
-                    addTokens(COMMENTS, '#8b949e')
-                    addTokens(STRINGS, '#a5d6ff')
-                    addTokens(PREPROC, '#ff7b72')
-                    addTokens(KEYWORDS, '#ff7b72')
-                    addTokens(CUSTOM_TYPES, '#d2a6ff')
-                    addTokens(NUMBERS, '#79c0ff')
-                    addTokens(FUNCS, '#dcdcaa')
-                    addTokens(TYPES, '#ffa657')
-
-                    tokens.sort((a, b) => a.start - b.start)
-                    
-                    const noOverlap: Tok[] = []
-                    let cursor = 0
-                    for (const tok of tokens) {
-                      if (tok.start >= cursor) {
-                        noOverlap.push(tok)
-                        cursor = tok.end
+                      const syntaxColors = theme === 'light' ? {
+                        comments: '#3c8054',
+                        strings: '#0a3069',
+                        preproc: '#cf222e',
+                        keywords: '#0056b3',
+                        customTypes: '#24292e',
+                        numbers: '#0550ae',
+                        funcs: '#24292e',
+                        types: '#0056b3'
+                      } : {
+                        comments: '#8b949e',
+                        strings: '#a5d6ff',
+                        preproc: '#ff7b72',
+                        keywords: '#ff7b72',
+                        customTypes: '#d2a6ff',
+                        numbers: '#79c0ff',
+                        funcs: '#dcdcaa',
+                        types: '#ffa657'
                       }
-                    }
 
-                    let result = ''
-                    let pos = 0
-                    for (const tok of noOverlap) {
-                      result += escaped.slice(pos, tok.start)
-                      result += `<span style="color: ${tok.color}">${tok.content}</span>`
-                      pos = tok.end
-                    }
-                    result += escaped.slice(pos)
+                      // Extract types inside template angle brackets: e.g. <Process> or <int>
+                      const templates = /&lt;([a-zA-Z_]\w*)&gt;/g
+                      templates.lastIndex = 0
+                      let tm: RegExpExecArray | null
+                      while ((tm = templates.exec(escaped)) !== null) {
+                        const word = tm[1]
+                        const wordIndex = tm.index + 4 // after "&lt;"
+                        const color = /^(int|char|bool|float|double|void)$/.test(word)
+                          ? syntaxColors.keywords
+                          : (theme === 'light' ? '#24292e' : '#d2a6ff')
+                        tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
+                      }
 
-                    return result + '\n\n'
-                  })()
-                }}
-              />
+                      // Extract types following class/struct: e.g. struct Process
+                      const structClass = /\b(struct|class)\s+([a-zA-Z_]\w*)\b/g
+                      structClass.lastIndex = 0
+                      let sc: RegExpExecArray | null
+                      while ((sc = structClass.exec(escaped)) !== null) {
+                        const word = sc[2]
+                        const wordIndex = sc.index + sc[1].length + 1
+                        tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#24292e' : '#d2a6ff', content: word })
+                      }
 
-              {/* Input Area (Textarea - Transparent on top) */}
-              <textarea
-                ref={textareaRef}
-                value={editorCode}
-                onChange={e => setEditorCode(e.target.value)}
-                onKeyDown={handleKeyDownLocal}
-                placeholder="// Write or paste your custom code solution here...&#10;// Click 'Save Code' or press Command+S / Ctrl+S to save to your local database."
-                spellCheck={false}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  padding: 16,
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: fontSize,
-                  lineHeight: 1.6,
-                  color: 'transparent',
-                  caretColor: '#ffffff',
-                  resize: 'none',
-                  tabSize: 4,
-                  boxSizing: 'border-box',
-                  overflow: 'auto',
-                  whiteSpace: 'pre',
-                  WebkitTextFillColor: 'transparent',
-                  display: 'block'
-                }}
-              />
+                      addTokens(COMMENTS, syntaxColors.comments)
+                      addTokens(STRINGS, syntaxColors.strings)
+                      addTokens(PREPROC, syntaxColors.preproc)
+                      addTokens(KEYWORDS, syntaxColors.keywords)
+                      addTokens(CUSTOM_TYPES, syntaxColors.customTypes)
+                      addTokens(NUMBERS, syntaxColors.numbers)
+                      addTokens(FUNCS, syntaxColors.funcs)
+                      addTokens(TYPES, syntaxColors.types)
+
+                      tokens.sort((a, b) => a.start - b.start)
+                      
+                      const noOverlap: Tok[] = []
+                      let cursor = 0
+                      for (const tok of tokens) {
+                        if (tok.start >= cursor) {
+                          noOverlap.push(tok)
+                          cursor = tok.end
+                        }
+                      }
+
+                      let result = ''
+                      let pos = 0
+                      for (const tok of noOverlap) {
+                        result += escaped.slice(pos, tok.start)
+                        result += `<span style="color: ${tok.color}">${tok.content}</span>`
+                        pos = tok.end
+                      }
+                      result += escaped.slice(pos)
+
+                      return result + '\n\n'
+                    })()
+                  }}
+                />
+
+                {/* Input Area (Textarea - Transparent on top) */}
+                <textarea
+                  ref={textareaRef}
+                  value={editorCode}
+                  onChange={e => setEditorCode(e.target.value)}
+                  onKeyDown={handleKeyDownLocal}
+                  onSelect={handleSelect}
+                  onClick={handleSelect}
+                  onKeyUp={handleSelect}
+                  placeholder="// Write or paste your custom code solution here...&#10;// Click 'Save' or press Command+S / Ctrl+S to save to your local database."
+                  spellCheck={false}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    padding: 16,
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: fontSize,
+                    lineHeight: 1.6,
+                    color: 'transparent',
+                    caretColor: theme === 'light' ? '#000000' : '#ffffff',
+                    resize: 'none',
+                    tabSize: 4,
+                    boxSizing: 'border-box',
+                    overflow: 'auto',
+                    whiteSpace: 'pre',
+                    WebkitTextFillColor: 'transparent',
+                    display: 'block',
+                    zIndex: 2
+                  }}
+                />
+              </div>
             </div>
           </div>
 
