@@ -457,6 +457,10 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .code-block-copy.copied { color: var(--green); border-color: rgba(16,185,129,0.4); background: var(--green-dim); }
 .code-block-body { padding: 18px 20px; overflow-x: auto; }
 .code-block-body pre { margin: 0; }
+.code-block-pre {
+  color: #c9d1d9;
+  background: transparent;
+}
 
 /* ════════════════════════════════════════
    INTERACTIVE DEMO EMBED

@@ -310,10 +310,9 @@ export function EditableCodeBlock({
       
       {hasCode ? (
         <div className="code-block-body" style={{ padding: 0, background: '#0d1117', borderRadius: '0 0 8px 8px' }}>
-          <pre style={{
+          <pre className="code-block-pre" style={{
             margin: 0, padding: '10px 14px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5,
-            lineHeight: 1.5, color: '#c9d1d9', overflowX: 'auto', whiteSpace: 'pre-wrap',
-            background: 'transparent'
+            lineHeight: 1.5, overflowX: 'auto', whiteSpace: 'pre-wrap'
           }}>
             <code dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
           </pre>
