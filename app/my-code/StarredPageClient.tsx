@@ -147,12 +147,16 @@ export function StarredPageClient() {
 
         /* ── Print: clean notepad / gedit editor light style ── */
         @media print {
+          /* Reset backgrounds and enforce high fidelity printing */
           body {
             background: #ffffff !important;
-            color: #1e293b !important;
+            color: #0f172a !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            font-size: 12px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 11pt !important;
           }
           .no-print, .revision-toc-sidebar, .hero-card, .tip-box {
             display: none !important;
@@ -165,79 +169,105 @@ export function StarredPageClient() {
           .revision-layout-with-toc {
             display: block !important;
           }
-          .q-card {
+          
+          /* Premium Question Container Layout */
+          .question-container {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            margin-bottom: 24px !important;
-          }
-          .q-header h3 {
-            color: #0f172a !important;
-            font-size: 15px !important;
-          }
-          .q-header span {
-            color: #64748b !important;
-          }
-          .topic-band {
-            border-left: 4px solid #333333 !important;
-            background: #f1f5f9 !important;
-            padding: 6px 12px !important;
-            margin-bottom: 16px !important;
-          }
-          .topic-band * {
-            color: #0f172a !important;
-            background: transparent !important;
+            margin-bottom: 55px !important;
           }
 
-          /* Notepad/gedit style code editor box */
+          /* Structure mappings from the template */
+          .question-header {
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: 16px !important;
+            margin-bottom: 14px !important;
+          }
+          .question-number { 
+            color: #94a3b8 !important; 
+            font-weight: 700 !important; 
+            font-size: 15pt !important; 
+            font-family: 'JetBrains Mono', monospace !important;
+            font-variant-numeric: tabular-nums !important;
+            margin-top: 2px !important;
+          }
+          .question-title { 
+            font-size: 19pt !important; 
+            font-weight: 700 !important; 
+            color: #0f172a !important; 
+            margin: 0 !important; 
+            line-height: 1.25 !important; 
+            letter-spacing: -0.015em !important;
+          }
+          .metadata-row {
+            display: flex !important;
+            gap: 8px !important;
+            margin-bottom: 24px !important;
+            margin-left: 58px !important; 
+          }
+          .badge {
+            border: 1px solid #e2e8f0 !important;
+            color: #475569 !important;
+            padding: 4px 12px !important;
+            font-size: 9.5pt !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            background: #f8fafc !important;
+            letter-spacing: 0.01em !important;
+          }
+
+          /* Premium code box container */
           .code-block-wrap {
             border: 1px solid #cbd5e1 !important;
-            border-left: 3px solid #6366f1 !important; /* Notepad margin line indicator */
-            background: #fafafa !important;
+            background: #fafbfc !important;
             box-shadow: none !important;
-            border-radius: 6px !important;
+            border-radius: 8px !important;
+            margin-left: 58px !important; 
             overflow: hidden !important;
           }
           .code-block-header {
-            background: #f1f5f9 !important;
-            border-bottom: 1px solid #cbd5e1 !important;
-            padding: 4px 10px !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            font-size: 9.5pt !important;
+            font-weight: 500 !important;
+            color: #64748b !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding: 8px 18px !important;
+            background-color: #f8fafc !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
             display: flex !important;
             justify-content: space-between !important;
           }
-          .code-block-header .code-block-lang {
-            color: #475569 !important;
-            font-weight: 800 !important;
-            font-size: 10px !important;
-          }
           .code-block-header div {
-            display: none !important; /* Hide copy/edit buttons in print */
+            display: none !important; /* Hide editor toolbar buttons in print */
           }
           .code-block-body {
-            background: #fafafa !important;
+            background: #fafbfc !important;
             padding: 0 !important;
           }
           .code-block-body pre {
             margin: 0 !important;
-            padding: 8px 12px !important;
+            padding: 22px 24px !important;
             background: transparent !important;
             white-space: pre-wrap !important;
             overflow: visible !important;
           }
           .code-block-body code,
           .code-block-body span {
-            font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace !important;
-            font-size: 11px !important;
-            line-height: 1.5 !important;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
+            font-size: 11pt !important;
+            line-height: 1.65 !important;
           }
 
-          /* Custom light-mode syntax colors for printed paper compatibility */
-          .code-block-body span[style*="color: #ff7b72"] { color: #d73a49 !important; font-weight: bold !important; } /* Keywords (salmon -> red) */
-          .code-block-body span[style*="color: #a5d6ff"] { color: #032f62 !important; } /* Strings (light blue -> dark blue) */
-          .code-block-body span[style*="color: #8b949e"] { color: #6a737d !important; font-style: italic !important; } /* Comments (grey -> dark grey) */
-          .code-block-body span[style*="color: #79c0ff"] { color: #005cc5 !important; } /* Numbers */
-          .code-block-body span[style*="color: #d2a6ff"] { color: #6f42c1 !important; } /* Custom classes/structs (purple) */
-          .code-block-body span[style*="color: #ffa657"] { color: #e36209 !important; } /* Standard Types */
-          .code-block-body span[style*="color: #dcdcaa"] { color: #005cc5 !important; } /* Functions */
+          /* Match premium syntax colors exactly */
+          .code-block-body span[style*="color: #ff7b72"] { color: #d91565 !important; font-weight: 500 !important; } /* Keywords (Crisp Magenta/Red) */
+          .code-block-body span[style*="color: #a5d6ff"] { color: #16a34a !important; } /* Strings (Vibrant Green) */
+          .code-block-body span[style*="color: #8b949e"] { color: #64748b !important; font-style: italic !important; } /* Comments (Slate Gray) */
+          .code-block-body span[style*="color: #79c0ff"] { color: #ea580c !important; } /* Numbers (Orange) */
+          .code-block-body span[style*="color: #d2a6ff"] { color: #0284c7 !important; font-weight: 500 !important; } /* Custom Classes/Structs (Blue) */
+          .code-block-body span[style*="color: #ffa657"] { color: #0284c7 !important; } /* Standard Types */
+          .code-block-body span[style*="color: #dcdcaa"] { color: #0f172a !important; } /* Functions */
         }
       `}} />
 
@@ -409,44 +439,31 @@ export function StarredPageClient() {
                         const isSolved = solved.has(q.id)
 
                         return (
-                          <div key={q.id} id={`starred-q-${q.id}`} className="q-card" style={{ scrollMarginTop:100 }}>
-                            {/* Question header */}
-                            <div className="q-header" style={{
-                              display:'flex', justifyContent:'space-between', alignItems:'center',
-                              borderBottom:'1px solid var(--border)', paddingBottom:8, marginBottom:12,
-                              flexWrap:'wrap', gap:10
-                            }}>
-                              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                                <span style={{ fontFamily:'JetBrains Mono', fontSize:12.5, fontWeight:800, color:'var(--text-4)' }}>
-                                  #{String(idx + 1).padStart(2, '0')}
-                                </span>
-                                <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:'var(--text)' }}>{q.name}</h3>
-                                <span style={{ fontSize:11, color:'var(--text-4)' }}>({q.subtopic})</span>
-                              </div>
-                              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                                {isSolved && (
-                                  <span style={{
-                                    fontSize:10, fontWeight:800, padding:'2px 8px', borderRadius:4,
-                                    background:'#10b98115', color:'#10b981', border:'1px solid #10b98130'
-                                  }}>✓ Solved</span>
-                                )}
-                                <span style={{
-                                  fontSize:11, fontWeight:800, color:DIFF_COLORS[q.difficulty],
-                                  background:`${DIFF_COLORS[q.difficulty]}15`, padding:'2px 8px', borderRadius:4
+                          <div key={q.id} id={`starred-q-${q.id}`} className="question-container" style={{ scrollMarginTop:100 }}>
+                            {/* Question Header matching template */}
+                            <div className="question-header">
+                              <span className="question-number">
+                                #{String(idx + 1).padStart(2, '0')}
+                              </span>
+                              <h2 className="question-title">{q.name}</h2>
+                            </div>
+
+                            {/* Metadata Row matching template */}
+                            <div className="metadata-row">
+                              <span className="badge">{q.subtopic}</span>
+                              {isSolved && <span className="badge">✓ Solved</span>}
+                              <span className="badge" style={{ color: DIFF_COLORS[q.difficulty] }}>
+                                {DIFF_LABELS[q.difficulty]}
+                              </span>
+                              <a href={badge.link} target="_blank" rel="noopener noreferrer"
+                                className="no-print badge"
+                                style={{
+                                  color: badge.color,
+                                  textDecoration: 'none',
+                                  fontFamily: 'JetBrains Mono'
                                 }}>
-                                  {DIFF_LABELS[q.difficulty]} {DIFF_STARS[q.difficulty]}
-                                </span>
-                                <a href={badge.link} target="_blank" rel="noopener noreferrer"
-                                  className="no-print"
-                                  style={{
-                                    fontSize:11, fontWeight:800, padding:'2px 10px', borderRadius:4,
-                                    background:`${badge.color}15`, color:badge.color,
-                                    border:`1px solid ${badge.color}40`, textDecoration:'none',
-                                    fontFamily:'JetBrains Mono'
-                                  }}>
-                                  {badge.label} ↗
-                                </a>
-                              </div>
+                                {badge.label} ↗
+                              </a>
                             </div>
 
                              {/* Syntax-colored code block */}
