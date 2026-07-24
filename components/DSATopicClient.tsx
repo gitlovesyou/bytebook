@@ -199,6 +199,24 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
   const [showRunner, setShowRunner] = useState<boolean>(true)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const preRef = useRef<HTMLPreElement>(null)
+
+  // Scroll synchronization between textarea and pre
+  useEffect(() => {
+    const ta = textareaRef.current
+    const pre = preRef.current
+    if (!ta || !pre) return
+
+    const syncScroll = () => {
+      pre.scrollTop = ta.scrollTop
+      pre.scrollLeft = ta.scrollLeft
+    }
+
+    ta.addEventListener('scroll', syncScroll)
+    return () => {
+      ta.removeEventListener('scroll', syncScroll)
+    }
+  }, [active.id]) // Rebind when active question changes
 
   // Sync editor code when active question changes or lang changes
   useEffect(() => {
@@ -508,19 +526,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   boxSizing: 'border-box',
                   background: 'transparent'
                 }}
-                ref={el => {
-                  // Custom scroll sync helper
-                  if (el && textareaRef.current) {
-                    const ta = textareaRef.current
-                    const syncScroll = () => {
-                      el.scrollTop = ta.scrollTop
-                      el.scrollLeft = ta.scrollLeft
-                    }
-                    ta.removeEventListener('scroll', ta.dataset.scrollListener as any)
-                    ta.addEventListener('scroll', syncScroll)
-                    ta.dataset.scrollListener = 'true'
-                  }
-                }}
+                ref={preRef}
                 dangerouslySetInnerHTML={{
                   __html: (() => {
                     const escape = (text: string) => text
