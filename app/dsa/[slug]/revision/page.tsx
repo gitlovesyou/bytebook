@@ -245,17 +245,17 @@ export default async function DSARevisionPage({ params }: Props) {
           .code-block-body code,
           .code-block-body span {
             font-family: 'Ubuntu Mono', 'Liberation Mono', 'DejaVu Sans Mono', Consolas, monospace !important; /* Linux gedit editor monospace stack */
-            font-size: 15.5pt !important; /* Make font size even bigger */
-            line-height: 1.6 !important;
+            font-size: 16.5pt !important; /* Make font size even bigger */
+            line-height: 1.65 !important;
             color: #000000 !important;
-            font-weight: 700 !important; /* Bold weight for extremely thick stroke readability */
+            font-weight: 500 !important; /* Medium normal weight for clean sharp printout */
             font-style: normal !important;
           }
 
           /* Clear all syntax colors on print to ensure everything is pure black */
           .code-block-body span[style*="color:"] {
             color: #000000 !important;
-            font-weight: 700 !important;
+            font-weight: 500 !important;
             font-style: normal !important;
           }
         }
