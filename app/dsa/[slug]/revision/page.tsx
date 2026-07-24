@@ -240,24 +240,25 @@ export default async function DSARevisionPage({ params }: Props) {
             background: transparent !important;
             white-space: pre-wrap !important;
             overflow: visible !important;
-            color: #000000 !important; /* Force standard text/operators to be solid black */
+            color: #05070f !important; /* Force standard text/operators to be deep black */
           }
           .code-block-body code,
           .code-block-body span {
-            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
-            font-size: 13.5pt !important; /* Bigger readable font size for print */
-            line-height: 1.65 !important;
-            color: #000000 !important; /* Enforce default solid black color for generic code text */
+            font-family: 'Intel One Mono', 'JetBrains Mono', Consolas, monospace !important; /* Premium curved developer monospace stack */
+            font-size: 14.5pt !important; /* Enlarge code font to 14.5pt */
+            line-height: 1.7 !important;
+            letter-spacing: 0.02em !important; /* MonoLisa-like wider horizontal letter spacing */
+            color: #05070f !important;
+            font-weight: 500 !important; /* Medium weight for thick stroke print readability */
+            font-style: normal !important;
           }
 
-          /* Match premium high-contrast syntax colors exactly */
-          .code-block-body span[style*="color: #ff7b72"] { color: #b91c1c !important; font-weight: 700 !important; } /* Keywords (Deep crimson red) */
-          .code-block-body span[style*="color: #a5d6ff"] { color: #15803d !important; font-weight: 500 !important; } /* Strings (Dark Green) */
-          .code-block-body span[style*="color: #8b949e"] { color: #4b5563 !important; font-style: italic !important; } /* Comments (Slate Gray) */
-          .code-block-body span[style*="color: #79c0ff"] { color: #c2410c !important; font-weight: 600 !important; } /* Numbers (Dark Orange) */
-          .code-block-body span[style*="color: #d2a6ff"] { color: #6d28d9 !important; font-weight: 600 !important; } /* Custom Classes/Structs (Dark Purple) */
-          .code-block-body span[style*="color: #ffa657"] { color: #0369a1 !important; font-weight: 600 !important; } /* Standard Types (Dark Blue) */
-          .code-block-body span[style*="color: #dcdcaa"] { color: #000000 !important; } /* Functions */
+          /* Clear all syntax colors on print to ensure everything is pure black */
+          .code-block-body span[style*="color:"] {
+            color: #05070f !important;
+            font-weight: 500 !important;
+            font-style: normal !important;
+          }
         }
       `}} />
 
