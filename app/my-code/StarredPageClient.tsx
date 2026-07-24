@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { DSA_DATA, PHASE_COLORS } from '@/lib/dsa-data'
 import dsaLinksRaw from '@/lib/dsa-links.json'
 import Link from 'next/link'
+import { EditableCodeBlock } from '@/components/EditableCodeBlock'
 
 const dsaLinks = dsaLinksRaw as Record<string, string>
 
@@ -54,135 +55,6 @@ for (const phaseData of Object.values(DSA_DATA)) {
   }
 }
 
-// ── Syntax-colored code block (client-side token colouring) ──
-const KEYWORDS = /\b(int|char|bool|float|double|long|short|unsigned|void|return|if|else|for|while|do|switch|case|break|continue|class|struct|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|namespace|using|include|define|typedef|enum|virtual|override|inline|extern|register|volatile|mutable|explicit|friend)\b/g
-const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
-const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g
-const NUMBERS  = /\b(\d+\.?\d*)\b/g
-const PREPROC  = /(#\w+)/g
-const FUNCS    = /\b([a-zA-Z_]\w*)\s*(?=\()/g
-
-function syntaxColor(code: string): { html: string } {
-  // Escape HTML first
-  let escaped = code
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  // We'll do a simple token-by-token approach
-  // Mark regions with placeholders then replace
-  type Tok = { start: number; end: number; color: string; content: string }
-  const tokens: Tok[] = []
-
-  const addTokens = (re: RegExp, color: string) => {
-    re.lastIndex = 0
-    let m: RegExpExecArray | null
-    while ((m = re.exec(escaped)) !== null) {
-      tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
-    }
-  }
-
-  // Order matters — comments first (highest priority)
-  addTokens(new RegExp(COMMENTS.source, 'g'), '#6a9955')
-  addTokens(new RegExp(STRINGS.source,  'g'), '#ce9178')
-  addTokens(new RegExp(PREPROC.source,  'g'), '#c586c0')
-  addTokens(new RegExp(KEYWORDS.source, 'g'), '#569cd6')
-  addTokens(new RegExp(NUMBERS.source,  'g'), '#b5cea8')
-  addTokens(new RegExp(FUNCS.source,    'g'), '#dcdcaa')
-
-  // Sort by start, remove overlaps
-  tokens.sort((a, b) => a.start - b.start)
-  const noOverlap: Tok[] = []
-  let cursor = 0
-  for (const tok of tokens) {
-    if (tok.start >= cursor) {
-      noOverlap.push(tok)
-      cursor = tok.end
-    }
-  }
-
-  // Build output
-  let result = ''
-  let pos = 0
-  for (const tok of noOverlap) {
-    result += escaped.slice(pos, tok.start)
-    result += `<span style="color:${tok.color}">${tok.content}</span>`
-    pos = tok.end
-  }
-  result += escaped.slice(pos)
-
-  return { html: result }
-}
-
-function CodeBlock({ code, questionId }: { code: string; questionId: number }) {
-  const [copied, setCopied] = useState(false)
-  const lines = code.split('\n')
-  const { html: coloredHtml } = useMemo(() => syntaxColor(code), [code])
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const lang = useMemo(() => {
-    if (code.includes('import java') || code.includes('public class')) return 'JAVA'
-    if (code.includes('def ') && !code.includes('#include')) return 'PYTHON'
-    if (code.includes('console.log')) return 'JS'
-    if (code.includes('stdio.h')) return 'C'
-    return 'CPP'
-  }, [code])
-
-  if (!code.trim()) {
-    return (
-      <div className="code-block-wrap" style={{ margin: 0 }}>
-        <div className="code-block-body" style={{
-          padding: '20px', textAlign: 'center',
-          color: 'var(--text-4)', fontSize: 12.5, fontStyle: 'italic'
-        }}>
-          No custom code saved yet. Open the DSA sheet and write your solution!
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="code-block-wrap" style={{ margin: 0 }}>
-      {/* Toolbar */}
-      <div className="code-block-header">
-        <span className="code-block-lang">{lang}</span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className={`code-block-copy${copied ? ' copied' : ''}`}
-            onClick={handleCopy}
-          >
-            {copied ? (
-              <>✓ Copied!</>
-            ) : (
-              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Colored code body */}
-      <div className="code-block-body" style={{ padding: 0 }}>
-        <pre style={{
-          margin: 0,
-          padding: '16px 20px',
-          fontFamily: 'JetBrains Mono, Fira Code, monospace',
-          fontSize: 13,
-          lineHeight: 1.65,
-          color: '#e6edf3',
-          overflowX: 'auto',
-          background: 'transparent',
-        }}>
-          <code dangerouslySetInnerHTML={{ __html: coloredHtml }} />
-        </pre>
-      </div>
-    </div>
-  )
-}
 
 export function StarredPageClient() {
   const [revisit, setRevisit]   = useState<Set<number>>(new Set())
@@ -502,9 +374,19 @@ export function StarredPageClient() {
                               </div>
                             </div>
 
-                            {/* Syntax-colored code block */}
-                            <CodeBlock code={code} questionId={q.id} />
-                          </div>
+                             {/* Syntax-colored code block */}
+                             <EditableCodeBlock
+                               questionId={q.id}
+                               initialCode={code}
+                               language={(() => {
+                                 if (code.includes('import java') || code.includes('public class')) return 'java'
+                                 if (code.includes('def ') && !code.includes('#include')) return 'python'
+                                 if (code.includes('console.log')) return 'javascript'
+                                 if (code.includes('stdio.h')) return 'c'
+                                 return 'cpp'
+                               })()}
+                             />
+                           </div>
                         )
                       })}
                     </div>
