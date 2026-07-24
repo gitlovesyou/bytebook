@@ -112,20 +112,69 @@ export function EditableCodeBlock({
       const match = currentLine.match(/^([ \t]*)/)
       const indent = match ? match[1] : ''
 
-      // Extra indent if current line ends with a curly brace
-      let extraIndent = ''
-      if (currentLine.trim().endsWith('{')) {
-        extraIndent = '    '
+      let insertion = '\n' + indent
+      let cursorOffset = insertion.length
+
+      // Check if cursor is between '{' and '}'
+      const charBefore = val.charAt(start - 1)
+      const charAfter = val.charAt(start)
+      
+      if (charBefore === '{' && charAfter === '}') {
+        insertion = '\n' + indent + '    ' + '\n' + indent
+        cursorOffset = 1 + indent.length + 4
+      } else if (currentLine.trim().endsWith('{')) {
+        insertion = '\n' + indent + '    ' + '\n' + indent + '}'
+        cursorOffset = 1 + indent.length + 4
       }
 
-      const insertion = '\n' + indent + extraIndent
       const newVal = val.substring(0, start) + insertion + val.substring(end)
       setCode(newVal)
 
       // Reset selection position after rendering
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + insertion.length
+        textarea.selectionStart = textarea.selectionEnd = start + cursorOffset
       }, 0)
+    }
+
+    // Autocomplete brackets and quotes
+    const autoPairs: Record<string, string> = {
+      '{': '}',
+      '[': ']',
+      '(': ')',
+      '"': '"',
+      "'": "'"
+    }
+
+    if (autoPairs[e.key] !== undefined) {
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const val = textarea.value
+      const closingChar = autoPairs[e.key]
+      
+      const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
+      setCode(newVal)
+      
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + 1
+      }, 0)
+      return
+    }
+
+    // Step over closing brackets and quotes if typed
+    const closingChars = new Set(['}', ']', ')', '"', "'"])
+    if (closingChars.has(e.key)) {
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const val = textarea.value
+      if (val.charAt(start) === e.key) {
+        e.preventDefault()
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 1
+        }, 0)
+        return
+      }
     }
   }
 

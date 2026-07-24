@@ -330,6 +330,8 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 4
+          const newlines = newVal.substring(0, start + 4).split('\n')
+          setActiveLine(newlines.length)
         }
       }, 0)
     }
@@ -356,6 +358,8 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
           setTimeout(() => {
             if (textareaRef.current) {
               textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start - deleteCount
+              const newlines = newVal.substring(0, start - deleteCount).split('\n')
+              setActiveLine(newlines.length)
             }
           }, 0)
         }
@@ -378,22 +382,77 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       const match = currentLine.match(/^([ \t]*)/)
       const indent = match ? match[1] : ''
 
-      // Extra indent if current line ends with a curly brace
-      let extraIndent = ''
-      if (currentLine.trim().endsWith('{')) {
-        extraIndent = '    '
+      let insertion = '\n' + indent
+      let cursorOffset = insertion.length
+
+      // Check if cursor is between '{' and '}'
+      const charBefore = val.charAt(start - 1)
+      const charAfter = val.charAt(start)
+      
+      if (charBefore === '{' && charAfter === '}') {
+        insertion = '\n' + indent + '    ' + '\n' + indent
+        cursorOffset = 1 + indent.length + 4
+      } else if (currentLine.trim().endsWith('{')) {
+        insertion = '\n' + indent + '    ' + '\n' + indent + '}'
+        cursorOffset = 1 + indent.length + 4
       }
 
-      const insertion = '\n' + indent + extraIndent
       const newVal = val.substring(0, start) + insertion + val.substring(end)
       setEditorCode(newVal)
 
       // Reset selection position after rendering
       setTimeout(() => {
         if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + insertion.length
+          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + cursorOffset
+          const newlines = newVal.substring(0, start + cursorOffset).split('\n')
+          setActiveLine(newlines.length)
         }
       }, 0)
+    }
+
+    // Autocomplete brackets and quotes
+    const autoPairs: Record<string, string> = {
+      '{': '}',
+      '[': ']',
+      '(': ')',
+      '"': '"',
+      "'": "'"
+    }
+
+    if (autoPairs[e.key] !== undefined) {
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const val = textarea.value
+      const closingChar = autoPairs[e.key]
+      
+      const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
+      setEditorCode(newVal)
+      
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 1
+        }
+      }, 0)
+      return
+    }
+
+    // Step over closing brackets and quotes if typed
+    const closingChars = new Set(['}', ']', ')', '"', "'"])
+    if (closingChars.has(e.key)) {
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const val = textarea.value
+      if (val.charAt(start) === e.key) {
+        e.preventDefault()
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 1
+          }
+        }, 0)
+        return
+      }
     }
 
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
@@ -572,6 +631,8 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     cursor: 'pointer',
                     fontFamily: 'Inter, sans-serif',
                     outline: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
                     appearance: 'none',
                     backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${theme === 'light' ? '%23334155' : '%23c9d1d9'}' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
                     backgroundRepeat: 'no-repeat',
@@ -848,6 +909,11 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     pointerEvents: 'none',
                     boxSizing: 'border-box',
                     background: 'transparent',
+                    backgroundImage: `linear-gradient(to right, transparent calc(4ch - 1px), ${theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.05)'} calc(4ch - 1px), ${theme === 'light' ? '#e2e8f0' : 'rgba(255,255,255,0.05)'} 4ch)`,
+                    backgroundSize: '4ch 100%',
+                    backgroundRepeat: 'repeat-x',
+                    backgroundPosition: '16px 0',
+                    backgroundAttachment: 'local',
                     zIndex: 1
                   }}
                   ref={preRef}
