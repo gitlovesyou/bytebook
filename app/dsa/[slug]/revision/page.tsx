@@ -57,7 +57,7 @@ export default async function DSARevisionPage({ params }: Props) {
     solvedQuestions.map(async (q) => {
       const record = progressMap.get(q.id)
       const savedCode = record?.userCode || ''
-      
+
       let lang = 'cpp'
       if (savedCode.includes('import java') || savedCode.includes('public class')) lang = 'java'
       else if (savedCode.includes('def ') || (savedCode.includes('import ') && !savedCode.includes('#include'))) lang = 'python'
@@ -86,9 +86,10 @@ export default async function DSARevisionPage({ params }: Props) {
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: '100%' }}>
-      
+
       {/* Stylesheet for print/pdf mapping */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         /* Screen-mode styling for the new HTML structures */
         .question-container {
           margin-bottom: 40px;
@@ -244,24 +245,25 @@ export default async function DSARevisionPage({ params }: Props) {
           .code-block-body code,
           .code-block-body span {
             font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
-            font-size: 14pt !important; /* Enlarge code font to 14pt for high readability */
+            font-size: 13.5pt !important; /* Bigger readable font size for print */
             line-height: 1.65 !important;
-            color: #000000 !important; /* Enforce default solid black color for all spans and tokens */
-            font-weight: normal !important;
-            font-style: normal !important;
+            color: #000000 !important; /* Enforce default solid black color for generic code text */
           }
 
-          /* Clear all syntax colors on print to ensure everything is pure black */
-          .code-block-body span[style*="color:"] {
-            color: #000000 !important;
-            font-weight: normal !important;
-            font-style: normal !important;
-          }
+          /* Match premium high-contrast syntax colors exactly */
+          .code-block-body span[style*="color: #ff7b72"] { color: #b91c1c !important; font-weight: 700 !important; } /* Keywords (Deep crimson red) */
+          .code-block-body span[style*="color: #a5d6ff"] { color: #15803d !important; font-weight: 500 !important; } /* Strings (Dark Green) */
+          .code-block-body span[style*="color: #8b949e"] { color: #4b5563 !important; font-style: italic !important; } /* Comments (Slate Gray) */
+          .code-block-body span[style*="color: #79c0ff"] { color: #c2410c !important; font-weight: 600 !important; } /* Numbers (Dark Orange) */
+          .code-block-body span[style*="color: #d2a6ff"] { color: #6d28d9 !important; font-weight: 600 !important; } /* Custom Classes/Structs (Dark Purple) */
+          .code-block-body span[style*="color: #ffa657"] { color: #0369a1 !important; font-weight: 600 !important; } /* Standard Types (Dark Blue) */
+          .code-block-body span[style*="color: #dcdcaa"] { color: #000000 !important; } /* Functions */
         }
       `}} />
 
       {/* Copy button script */}
-      <script dangerouslySetInnerHTML={{ __html: `
+      <script dangerouslySetInnerHTML={{
+        __html: `
         function copyCode(btn) {
           const code = decodeURIComponent(btn.getAttribute('data-code'));
           navigator.clipboard.writeText(code).then(() => {
@@ -309,7 +311,7 @@ export default async function DSARevisionPage({ params }: Props) {
           <div style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500, marginBottom: 12 }}>
             Curated Study Guide & Custom Saved Code Solutions
           </div>
-          
+
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.15)', color: '#e2e8f0', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600 }}>
               {phaseKey}: {phase.title}
@@ -367,7 +369,7 @@ export default async function DSARevisionPage({ params }: Props) {
           </div>
         ) : (
           <div className="revision-layout-with-toc">
-            
+
             {/* Left Side: Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
               {solvedQuestionsWithHtml.map((q, index) => {

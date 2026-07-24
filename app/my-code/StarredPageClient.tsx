@@ -8,19 +8,19 @@ import { EditableCodeBlock } from '@/components/EditableCodeBlock'
 
 const dsaLinks = dsaLinksRaw as Record<string, string>
 
-const DIFF_STARS  = ['', '★☆☆☆☆', '★★☆☆☆', '★★★☆☆', '★★★★☆', '★★★★★']
+const DIFF_STARS = ['', '★☆☆☆☆', '★★☆☆☆', '★★★☆☆', '★★★★☆', '★★★★★']
 const DIFF_COLORS = ['', '#10b981', '#10b981', '#f59e0b', '#ef4444', '#ef4444']
 const DIFF_LABELS = ['', 'Easy', 'Easy', 'Medium', 'Hard', 'Hard']
 
-const STORAGE_KEY         = 'bytebook_dsa_progress'
-const STORAGE_CODE_KEY    = 'bytebook_dsa_codes'
+const STORAGE_KEY = 'bytebook_dsa_progress'
+const STORAGE_CODE_KEY = 'bytebook_dsa_codes'
 const STORAGE_REVISIT_KEY = 'bytebook_dsa_revisit'
 
 function getPlatformBadge(name: string) {
   const link = dsaLinks[name]
   if (!link) return { label: 'LC', color: '#f97316', link: '#' }
   if (link.includes('geeksforgeeks.org')) return { label: 'GFG', color: '#2f8d46', link }
-  if (link.includes('spoj.com'))           return { label: 'SPOJ', color: '#1a8cff', link }
+  if (link.includes('spoj.com')) return { label: 'SPOJ', color: '#1a8cff', link }
   if (link.includes('naukri.com') || link.includes('codingninjas')) return { label: 'Ninja', color: '#f97316', link }
   return { label: 'LC', color: '#f97316', link }
 }
@@ -57,22 +57,22 @@ for (const phaseData of Object.values(DSA_DATA)) {
 
 
 export function StarredPageClient() {
-  const [revisit, setRevisit]   = useState<Set<number>>(new Set())
-  const [solved, setSolved]     = useState<Set<number>>(new Set())
+  const [revisit, setRevisit] = useState<Set<number>>(new Set())
+  const [solved, setSolved] = useState<Set<number>>(new Set())
   const [userCodes, setUserCodes] = useState<Record<number, string>>({})
-  const [loaded, setLoaded]     = useState(false)
-  const [search, setSearch]     = useState('')
+  const [loaded, setLoaded] = useState(false)
+  const [search, setSearch] = useState('')
 
   // Read everything from localStorage directly — no DB needed for display
   useEffect(() => {
     try {
-      const rev  = localStorage.getItem(STORAGE_REVISIT_KEY)
-      const sol  = localStorage.getItem(STORAGE_KEY)
+      const rev = localStorage.getItem(STORAGE_REVISIT_KEY)
+      const sol = localStorage.getItem(STORAGE_KEY)
       const codes = localStorage.getItem(STORAGE_CODE_KEY)
-      if (rev)   setRevisit(new Set(JSON.parse(rev)))
-      if (sol)   setSolved(new Set(JSON.parse(sol)))
+      if (rev) setRevisit(new Set(JSON.parse(rev)))
+      if (sol) setSolved(new Set(JSON.parse(sol)))
       if (codes) setUserCodes(JSON.parse(codes))
-    } catch {}
+    } catch { }
     setLoaded(true)
   }, [])
 
@@ -88,8 +88,8 @@ export function StarredPageClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids }),
-      }).catch(() => {})
-    } catch {}
+      }).catch(() => { })
+    } catch { }
   }, [loaded])
 
   const starredQuestions = useMemo(
@@ -116,15 +116,15 @@ export function StarredPageClient() {
 
   const orderedTopics = TOPIC_ORDER.filter(t => grouped[t])
   const totalStarred = starredQuestions.length
-  const totalSolved  = starredQuestions.filter(q => solved.has(q.id)).length
-  const totalCoded   = starredQuestions.filter(q => userCodes[q.id]).length
+  const totalSolved = starredQuestions.filter(q => solved.has(q.id)).length
+  const totalCoded = starredQuestions.filter(q => userCodes[q.id]).length
 
   if (!loaded) {
     return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'60vh' }}>
-        <div style={{ textAlign:'center', color:'var(--text-3)' }}>
-          <div style={{ fontSize:40, marginBottom:10 }}>⏳</div>
-          <div style={{ fontFamily:'JetBrains Mono', fontSize:13 }}>Loading starred questions...</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center', color: 'var(--text-3)' }}>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>⏳</div>
+          <div style={{ fontFamily: 'JetBrains Mono', fontSize: 13 }}>Loading starred questions...</div>
         </div>
       </div>
     )
@@ -133,7 +133,8 @@ export function StarredPageClient() {
   return (
     <div style={{ padding: '32px 40px', maxWidth: '100%' }}>
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         /* ── Screen layout ── */
         .revision-layout-with-toc {
           display: grid; grid-template-columns: 1fr 210px; gap: 32px; align-items: start;
@@ -301,61 +302,61 @@ export function StarredPageClient() {
           .code-block-body code,
           .code-block-body span {
             font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
-            font-size: 14pt !important; /* Enlarge code font to 14pt for high readability */
+            font-size: 13.5pt !important; /* Bigger readable font size for print */
             line-height: 1.65 !important;
-            color: #000000 !important; /* Enforce default solid black color for all spans and tokens */
-            font-weight: normal !important;
-            font-style: normal !important;
+            color: #000000 !important; /* Enforce default solid black color for generic code text */
           }
 
-          /* Clear all syntax colors on print to ensure everything is pure black */
-          .code-block-body span[style*="color:"] {
-            color: #000000 !important;
-            font-weight: normal !important;
-            font-style: normal !important;
-          }
+          /* Match premium high-contrast syntax colors exactly */
+          .code-block-body span[style*="color: #ff7b72"] { color: #b91c1c !important; font-weight: 700 !important; } /* Keywords (Deep crimson red) */
+          .code-block-body span[style*="color: #a5d6ff"] { color: #15803d !important; font-weight: 500 !important; } /* Strings (Dark Green) */
+          .code-block-body span[style*="color: #8b949e"] { color: #4b5563 !important; font-style: italic !important; } /* Comments (Slate Gray) */
+          .code-block-body span[style*="color: #79c0ff"] { color: #c2410c !important; font-weight: 600 !important; } /* Numbers (Dark Orange) */
+          .code-block-body span[style*="color: #d2a6ff"] { color: #6d28d9 !important; font-weight: 600 !important; } /* Custom Classes/Structs (Dark Purple) */
+          .code-block-body span[style*="color: #ffa657"] { color: #0369a1 !important; font-weight: 600 !important; } /* Standard Types (Dark Blue) */
+          .code-block-body span[style*="color: #dcdcaa"] { color: #000000 !important; } /* Functions */
         }
       `}} />
 
       <div className="print-container">
 
         {/* Breadcrumb */}
-        <div className="no-print" style={{ display:'flex', alignItems:'center', gap:6, marginBottom:20, fontSize:12.5 }}>
-          <Link href="/" style={{ color:'var(--text-4)', textDecoration:'none' }}>Home</Link>
-          <span style={{ color:'var(--text-4)' }}>/</span>
-          <Link href="/dsa" style={{ color:'var(--text-4)', textDecoration:'none' }}>DSA Master Sheet</Link>
-          <span style={{ color:'var(--text-4)' }}>/</span>
-          <span style={{ color:'var(--text-3)' }}>Starred Problems</span>
+        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, fontSize: 12.5 }}>
+          <Link href="/" style={{ color: 'var(--text-4)', textDecoration: 'none' }}>Home</Link>
+          <span style={{ color: 'var(--text-4)' }}>/</span>
+          <Link href="/dsa" style={{ color: 'var(--text-4)', textDecoration: 'none' }}>DSA Master Sheet</Link>
+          <span style={{ color: 'var(--text-4)' }}>/</span>
+          <span style={{ color: 'var(--text-3)' }}>Starred Problems</span>
         </div>
 
         {/* Print button */}
-        <div className="no-print" style={{ display:'flex', justifyContent:'flex-end', marginBottom:20 }}>
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
           <button
             onClick={() => window.print()}
             style={{
-              display:'inline-flex', alignItems:'center', gap:6,
-              padding:'7px 16px', borderRadius:8, cursor:'pointer',
-              background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.35)',
-              color:'#f59e0b', fontWeight:700, fontSize:12, fontFamily:'JetBrains Mono'
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '7px 16px', borderRadius: 8, cursor: 'pointer',
+              background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)',
+              color: '#f59e0b', fontWeight: 700, fontSize: 12, fontFamily: 'JetBrains Mono'
             }}
           >🖨 Print / PDF</button>
         </div>
 
         {/* Hero */}
         <div className="hero-card" style={{
-          background:'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #92400e88 100%)',
-          color:'#fff', padding:'24px 30px', borderRadius:12,
-          marginBottom:20, boxShadow:'0 8px 32px rgba(0,0,0,0.3)'
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #92400e88 100%)',
+          color: '#fff', padding: '24px 30px', borderRadius: 12,
+          marginBottom: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
         }}>
-          <div style={{ fontSize:24, fontWeight:900, letterSpacing:'-0.5px', marginBottom:4 }}>★ Starred Problems</div>
-          <div style={{ fontSize:13, color:'#94a3b8', fontWeight:500, marginBottom:12 }}>
+          <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 4 }}>★ Starred Problems</div>
+          <div style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500, marginBottom: 12 }}>
             Your pinned questions with saved code — grouped by topic
           </div>
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[`Starred: ${totalStarred}`, `Solved: ${totalSolved} / ${totalStarred}`, `Code Saved: ${totalCoded}`, `Topics: ${orderedTopics.length}`].map(label => (
               <span key={label} style={{
-                background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.15)',
-                color:'#e2e8f0', padding:'2px 8px', borderRadius:12, fontSize:11, fontWeight:600
+                background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+                color: '#e2e8f0', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600
               }}>{label}</span>
             ))}
           </div>
@@ -363,43 +364,43 @@ export function StarredPageClient() {
 
         {/* Tip box */}
         <div className="tip-box" style={{
-          background:'var(--surface-2)', border:'1px solid var(--border)',
-          borderRadius:8, padding:'12px 18px', marginBottom:24
+          background: 'var(--surface-2)', border: '1px solid var(--border)',
+          borderRadius: 8, padding: '12px 18px', marginBottom: 24
         }}>
           <div style={{
-            fontSize:12, fontWeight:800, color:'var(--text)',
-            textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:6,
-            display:'flex', alignItems:'center', gap:6
+            fontSize: 12, fontWeight: 800, color: 'var(--text)',
+            textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6,
+            display: 'flex', alignItems: 'center', gap: 6
           }}>
-            <span style={{ display:'inline-block', width:4, height:11, background:'#f59e0b', borderRadius:2 }} />
+            <span style={{ display: 'inline-block', width: 4, height: 11, background: '#f59e0b', borderRadius: 2 }} />
             How to Use
           </div>
-          <ul style={{ paddingLeft:16, margin:0, fontSize:12.5, color:'var(--text-3)', lineHeight:1.5 }}>
+          <ul style={{ paddingLeft: 16, margin: 0, fontSize: 12.5, color: 'var(--text-3)', lineHeight: 1.5 }}>
             <li>Click the <strong>★</strong> star on any question in the DSA sheet to pin it here.</li>
             <li>Questions grouped by topic. Syntax-colored code shown for each saved solution.</li>
-            <li>Press <kbd style={{ fontFamily:'JetBrains Mono', background:'var(--surface)', padding:'1px 5px', borderRadius:4, border:'1px solid var(--border)' }}>⌘P</kbd> to print — code comes out as plain black text.</li>
+            <li>Press <kbd style={{ fontFamily: 'JetBrains Mono', background: 'var(--surface)', padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border)' }}>⌘P</kbd> to print — code comes out as plain black text.</li>
           </ul>
         </div>
 
         {/* Search */}
         {totalStarred > 0 && (
-          <div style={{ position:'relative', marginBottom:24, maxWidth:420 }}>
-            <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--text-4)', fontSize:14 }}>🔍</span>
+          <div style={{ position: 'relative', marginBottom: 24, maxWidth: 420 }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-4)', fontSize: 14 }}>🔍</span>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search starred questions..."
               style={{
-                width:'100%', padding:'9px 12px 9px 36px', boxSizing:'border-box',
-                background:'var(--surface)', border:'1px solid var(--border)',
-                borderRadius:8, color:'var(--text-1)', fontSize:13,
-                outline:'none', fontFamily:'inherit'
+                width: '100%', padding: '9px 12px 9px 36px', boxSizing: 'border-box',
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 8, color: 'var(--text-1)', fontSize: 13,
+                outline: 'none', fontFamily: 'inherit'
               }}
             />
             {search && (
               <button onClick={() => setSearch('')} style={{
-                position:'absolute', right:10, top:'50%', transform:'translateY(-50%)',
-                background:'none', border:'none', color:'var(--text-4)', cursor:'pointer', fontSize:18
+                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', color: 'var(--text-4)', cursor: 'pointer', fontSize: 18
               }}>×</button>
             )}
           </div>
@@ -408,84 +409,84 @@ export function StarredPageClient() {
         {/* Empty state */}
         {totalStarred === 0 ? (
           <div style={{
-            textAlign:'center', padding:'48px 24px', background:'var(--surface)',
-            border:'1px dashed var(--border)', borderRadius:12
+            textAlign: 'center', padding: '48px 24px', background: 'var(--surface)',
+            border: '1px dashed var(--border)', borderRadius: 12
           }}>
-            <div style={{ fontSize:32, marginBottom:12 }}>☆</div>
-            <div style={{ fontSize:15, fontWeight:700, color:'var(--text)', marginBottom:6 }}>No Starred Questions Yet</div>
-            <div style={{ fontSize:13, color:'var(--text-4)', marginBottom:20 }}>
-              Click the <span style={{ color:'#f59e0b', fontWeight:900 }}>★</span> icon on any question in the DSA sheet to pin it here.
+            <div style={{ fontSize: 32, marginBottom: 12 }}>☆</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>No Starred Questions Yet</div>
+            <div style={{ fontSize: 13, color: 'var(--text-4)', marginBottom: 20 }}>
+              Click the <span style={{ color: '#f59e0b', fontWeight: 900 }}>★</span> icon on any question in the DSA sheet to pin it here.
             </div>
             <Link href="/dsa" style={{
-              display:'inline-flex', alignItems:'center', padding:'8px 18px',
-              borderRadius:8, background:'#f59e0b', color:'white', fontWeight:800, fontSize:13, textDecoration:'none'
+              display: 'inline-flex', alignItems: 'center', padding: '8px 18px',
+              borderRadius: 8, background: '#f59e0b', color: 'white', fontWeight: 800, fontSize: 13, textDecoration: 'none'
             }}>Go to DSA Sheet</Link>
           </div>
         ) : orderedTopics.length === 0 ? (
-          <div style={{ textAlign:'center', padding:40, color:'var(--text-3)' }}>No matching questions.</div>
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)' }}>No matching questions.</div>
         ) : (
           <div className="revision-layout-with-toc">
 
             {/* LEFT: topic groups */}
-            <div style={{ display:'flex', flexDirection:'column', gap:40, minWidth:0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 40, minWidth: 0 }}>
               {orderedTopics.map(topicName => {
                 const qs = grouped[topicName]
                 const meta = qs[0]
                 const solvedInTopic = qs.filter(q => solved.has(q.id)).length
-                const codedInTopic  = qs.filter(q => userCodes[q.id]).length
+                const codedInTopic = qs.filter(q => userCodes[q.id]).length
 
                 return (
-                  <div key={topicName} id={`topic-${meta.topicSlug}`} style={{ scrollMarginTop:90 }}>
+                  <div key={topicName} id={`topic-${meta.topicSlug}`} style={{ scrollMarginTop: 90 }}>
                     {/* Topic band */}
                     <div className="topic-band" style={{
-                      display:'flex', alignItems:'center', justifyContent:'space-between',
-                      padding:'10px 16px',
-                      background:`linear-gradient(90deg, ${meta.phaseColor}20, transparent)`,
-                      borderLeft:`4px solid ${meta.phaseColor}`,
-                      borderRadius:'0 8px 8px 0',
-                      marginBottom:20, flexWrap:'wrap', gap:8
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 16px',
+                      background: `linear-gradient(90deg, ${meta.phaseColor}20, transparent)`,
+                      borderLeft: `4px solid ${meta.phaseColor}`,
+                      borderRadius: '0 8px 8px 0',
+                      marginBottom: 20, flexWrap: 'wrap', gap: 8
                     }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <span style={{ fontSize:18 }}>{meta.topicIcon}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 18 }}>{meta.topicIcon}</span>
                         <div>
-                          <div style={{ fontWeight:900, fontSize:16, color:'var(--text)' }}>{topicName}</div>
-                          <div style={{ fontSize:11, color:'var(--text-4)', fontFamily:'JetBrains Mono', marginTop:1 }}>
+                          <div style={{ fontWeight: 900, fontSize: 16, color: 'var(--text)' }}>{topicName}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-4)', fontFamily: 'JetBrains Mono', marginTop: 1 }}>
                             {solvedInTopic}/{qs.length} solved · {codedInTopic} with code
                           </div>
                         </div>
                         <span style={{
-                          fontSize:10, fontFamily:'JetBrains Mono', fontWeight:700,
-                          color:meta.phaseColor, background:`${meta.phaseColor}18`,
-                          border:`1px solid ${meta.phaseColor}30`, padding:'1px 7px', borderRadius:4
+                          fontSize: 10, fontFamily: 'JetBrains Mono', fontWeight: 700,
+                          color: meta.phaseColor, background: `${meta.phaseColor}18`,
+                          border: `1px solid ${meta.phaseColor}30`, padding: '1px 7px', borderRadius: 4
                         }}>{meta.phase}</span>
                       </div>
-                      <div className="no-print" style={{ display:'flex', gap:8 }}>
+                      <div className="no-print" style={{ display: 'flex', gap: 8 }}>
                         <span style={{
-                          padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700,
-                          background:'#f59e0b20', color:'#f59e0b', border:'1px solid #f59e0b40'
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                          background: '#f59e0b20', color: '#f59e0b', border: '1px solid #f59e0b40'
                         }}>★ {qs.length}</span>
                         <Link href={`/dsa/${meta.topicSlug}`} style={{
-                          padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700,
-                          background:'rgba(99,102,241,0.1)', color:'#818cf8',
-                          border:'1px solid rgba(99,102,241,0.25)', textDecoration:'none'
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                          background: 'rgba(99,102,241,0.1)', color: '#818cf8',
+                          border: '1px solid rgba(99,102,241,0.25)', textDecoration: 'none'
                         }}>Sheet →</Link>
                         <Link href={`/dsa/${meta.topicSlug}/revision`} style={{
-                          padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700,
-                          background:'rgba(16,185,129,0.1)', color:'#10b981',
-                          border:'1px solid rgba(16,185,129,0.25)', textDecoration:'none'
+                          padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                          background: 'rgba(16,185,129,0.1)', color: '#10b981',
+                          border: '1px solid rgba(16,185,129,0.25)', textDecoration: 'none'
                         }}>Revision →</Link>
                       </div>
                     </div>
 
                     {/* Question cards */}
-                    <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
                       {qs.map((q, idx) => {
-                        const badge  = getPlatformBadge(q.name)
-                        const code   = userCodes[q.id] || ''
+                        const badge = getPlatformBadge(q.name)
+                        const code = userCodes[q.id] || ''
                         const isSolved = solved.has(q.id)
 
                         return (
-                          <div key={q.id} id={`starred-q-${q.id}`} className="question-container" style={{ scrollMarginTop:100 }}>
+                          <div key={q.id} id={`starred-q-${q.id}`} className="question-container" style={{ scrollMarginTop: 100 }}>
                             {/* Question Header matching template */}
                             <div className="question-header">
                               <span className="question-number">
@@ -512,19 +513,19 @@ export function StarredPageClient() {
                               </a>
                             </div>
 
-                             {/* Syntax-colored code block */}
-                             <EditableCodeBlock
-                               questionId={q.id}
-                               initialCode={code}
-                               language={(() => {
-                                 if (code.includes('import java') || code.includes('public class')) return 'java'
-                                 if (code.includes('def ') && !code.includes('#include')) return 'python'
-                                 if (code.includes('console.log')) return 'javascript'
-                                 if (code.includes('stdio.h')) return 'c'
-                                 return 'cpp'
-                               })()}
-                             />
-                           </div>
+                            {/* Syntax-colored code block */}
+                            <EditableCodeBlock
+                              questionId={q.id}
+                              initialCode={code}
+                              language={(() => {
+                                if (code.includes('import java') || code.includes('public class')) return 'java'
+                                if (code.includes('def ') && !code.includes('#include')) return 'python'
+                                if (code.includes('console.log')) return 'javascript'
+                                if (code.includes('stdio.h')) return 'c'
+                                return 'cpp'
+                              })()}
+                            />
+                          </div>
                         )
                       })}
                     </div>
@@ -535,30 +536,30 @@ export function StarredPageClient() {
 
             {/* RIGHT: sticky TOC */}
             <div className="no-print revision-toc-sidebar" style={{
-              position:'sticky', top:'calc(var(--header-h) + 24px)',
-              maxHeight:'calc(100vh - var(--header-h) - 40px)',
-              overflowY:'auto', display:'flex', flexDirection:'column', gap:16,
-              padding:'4px 0 4px 20px', borderLeft:'1px solid var(--border)'
+              position: 'sticky', top: 'calc(var(--header-h) + 24px)',
+              maxHeight: 'calc(100vh - var(--header-h) - 40px)',
+              overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16,
+              padding: '4px 0 4px 20px', borderLeft: '1px solid var(--border)'
             }}>
-              <div style={{ fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'0.8px', color:'var(--text-2)' }}>
+              <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-2)' }}>
                 Topics
               </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {orderedTopics.map(topicName => {
                   const qs = grouped[topicName]
                   const meta = qs[0]
                   return (
                     <div key={topicName}>
                       <a href={`#topic-${meta.topicSlug}`} style={{
-                        fontSize:12.5, color:'var(--text-2)', textDecoration:'none',
-                        fontWeight:700, display:'block', marginBottom:4, lineHeight:1.3
+                        fontSize: 12.5, color: 'var(--text-2)', textDecoration: 'none',
+                        fontWeight: 700, display: 'block', marginBottom: 4, lineHeight: 1.3
                       }} className="toc-anchor">
                         {meta.topicIcon} {topicName}
                       </a>
-                      <div style={{ display:'flex', flexDirection:'column', gap:4, paddingLeft:8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 8 }}>
                         {qs.map((q, idx) => (
                           <a key={q.id} href={`#starred-q-${q.id}`} style={{
-                            fontSize:11, color:'var(--text-4)', textDecoration:'none', lineHeight:1.4
+                            fontSize: 11, color: 'var(--text-4)', textDecoration: 'none', lineHeight: 1.4
                           }} className="toc-anchor">
                             {String(idx + 1).padStart(2, '0')}. {q.name}
                           </a>
