@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useTransition, useEffect } from 'react'
+import { useState, useRef, useTransition, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveUserCode } from '@/app/actions/progress'
 
@@ -187,6 +187,66 @@ export function EditableCodeBlock({
 
   const hasCode = code.trim().length > 0
 
+  // Client-side syntax tokenizer helper matching the active editor theme colors
+  const highlightedHtml = useMemo(() => {
+    if (!hasCode) return ''
+    const escape = (text: string) => text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+
+    let escaped = escape(code)
+
+    const KEYWORDS = /\b(using|namespace|int|char|bool|float|double|long|short|unsigned|void|return|if|else|for|while|do|switch|case|break|continue|class|struct|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
+    const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
+    const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
+    const NUMBERS  = /\b(\d+\.?\d*)\b/g
+    const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
+    const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
+    const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print)\b/g
+
+    type Tok = { start: number; end: number; color: string; content: string }
+    const tokens: Tok[] = []
+
+    const addTokens = (re: RegExp, color: string) => {
+      re.lastIndex = 0
+      let m: RegExpExecArray | null
+      while ((m = re.exec(escaped)) !== null) {
+        tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
+      }
+    }
+
+    addTokens(COMMENTS, '#8b949e')
+    addTokens(STRINGS, '#a5d6ff')
+    addTokens(PREPROC, '#ff7b72')
+    addTokens(KEYWORDS, '#ff7b72')
+    addTokens(NUMBERS, '#79c0ff')
+    addTokens(FUNCS, '#dcdcaa')
+    addTokens(TYPES, '#ffa657')
+
+    tokens.sort((a, b) => a.start - b.start)
+    
+    const noOverlap: Tok[] = []
+    let cursor = 0
+    for (const tok of tokens) {
+      if (tok.start >= cursor) {
+        noOverlap.push(tok)
+        cursor = tok.end
+      }
+    }
+
+    let result = ''
+    let pos = 0
+    for (const tok of noOverlap) {
+      result += escaped.slice(pos, tok.start)
+      result += `<span style="color: ${tok.color}">${tok.content}</span>`
+      pos = tok.end
+    }
+    result += escaped.slice(pos)
+
+    return result
+  }, [code, hasCode])
+
   return (
     <div className="code-block-wrap" style={{ margin: 0, border: '1px solid var(--border)', borderRadius: 8 }}>
       <div className="code-block-header" style={{ padding: '6px 12px', fontSize: 11 }}>
@@ -227,18 +287,15 @@ export function EditableCodeBlock({
       </div>
       
       {hasCode ? (
-        initialHighlightedHtml && code === initialCode ? (
-          <div className="code-block-body" style={{ padding: 0 }} dangerouslySetInnerHTML={{ __html: initialHighlightedHtml }} />
-        ) : (
-          <div className="code-block-body" style={{ padding: 0 }}>
-            <pre style={{
-              margin: 0, padding: '10px 14px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5,
-              lineHeight: 1.5, color: '#e6edf3', overflowX: 'auto', whiteSpace: 'pre-wrap'
-            }}>
-              <code>{code}</code>
-            </pre>
-          </div>
-        )
+        <div className="code-block-body" style={{ padding: 0, background: '#0d1117', borderRadius: '0 0 8px 8px' }}>
+          <pre style={{
+            margin: 0, padding: '10px 14px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12.5,
+            lineHeight: 1.5, color: '#c9d1d9', overflowX: 'auto', whiteSpace: 'pre-wrap',
+            background: 'transparent'
+          }}>
+            <code dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+          </pre>
+        </div>
       ) : (
         <div style={{
           background: 'var(--surface-2)',
