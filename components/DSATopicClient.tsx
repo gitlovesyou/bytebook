@@ -534,39 +534,56 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                       .replace(/</g, '&lt;')
                       .replace(/>/g, '&gt;')
 
-                    let code = escape(editorCode)
+                    let escaped = escape(editorCode)
 
-                    // Basic real-time syntax coloring regex patterns (similar to GitHub Dark theme)
-                    const keywords = [
-                      '#include', 'using', 'namespace', 'std', 'int', 'char', 'float', 'double', 'bool', 'void',
-                      'class', 'struct', 'public', 'private', 'protected', 'virtual', 'override',
-                      'return', 'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue',
-                      'const', 'static', 'typename', 'template', 'new', 'delete', 'true', 'false',
-                      'import', 'from', 'as', 'def', 'class', 'self', 'lambda', 'and', 'or', 'not', 'in', 'is',
-                      'let', 'var', 'const', 'function', 'console', 'log', 'export', 'default',
-                      'package', 'interface', 'implements', 'extends', 'throws', 'throw', 'try', 'catch', 'finally'
-                    ]
+                    const KEYWORDS = /\b(using|namespace|int|char|bool|float|double|long|short|unsigned|void|return|if|else|for|while|do|switch|case|break|continue|class|struct|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
+                    const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
+                    const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
+                    const NUMBERS  = /\b(\d+\.?\d*)\b/g
+                    const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
+                    const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
+                    const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print)\b/g
 
-                    // Highlight Strings (double quotes)
-                    code = code.replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '<span style="color: #a5d6ff;">$&</span>')
+                    type Tok = { start: number; end: number; color: string; content: string }
+                    const tokens: Tok[] = []
 
-                    // Highlight Keywords
-                    const keywordRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g')
-                    code = code.replace(keywordRegex, '<span style="color: #ff7b72;">$1</span>')
+                    const addTokens = (re: RegExp, color: string) => {
+                      re.lastIndex = 0
+                      let m: RegExpExecArray | null
+                      while ((m = re.exec(escaped)) !== null) {
+                        tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
+                      }
+                    }
 
-                    // Highlight Numbers
-                    code = code.replace(/\b\d+\b/g, '<span style="color: #79c0ff;">$&</span>')
+                    addTokens(COMMENTS, '#8b949e')
+                    addTokens(STRINGS, '#a5d6ff')
+                    addTokens(PREPROC, '#ff7b72')
+                    addTokens(KEYWORDS, '#ff7b72')
+                    addTokens(NUMBERS, '#79c0ff')
+                    addTokens(FUNCS, '#dcdcaa')
+                    addTokens(TYPES, '#ffa657')
 
-                    // Highlight standard types & functions (e.g. std::cout, vector, print)
-                    code = code.replace(/\b(std|cout|cin|endl|vector|string|map|set|list|print|System|out|println|math)\b/g, '<span style="color: #ffa657;">$1</span>')
+                    tokens.sort((a, b) => a.start - b.start)
+                    
+                    const noOverlap: Tok[] = []
+                    let cursor = 0
+                    for (const tok of tokens) {
+                      if (tok.start >= cursor) {
+                        noOverlap.push(tok)
+                        cursor = tok.end
+                      }
+                    }
 
-                    // Highlight single line comments
-                    code = code.replace(/(\/\/|#)(?!.*style=).*$/gm, '<span style="color: #8b949e;">$&</span>')
+                    let result = ''
+                    let pos = 0
+                    for (const tok of noOverlap) {
+                      result += escaped.slice(pos, tok.start)
+                      result += `<span style="color: ${tok.color}">${tok.content}</span>`
+                      pos = tok.end
+                    }
+                    result += escaped.slice(pos)
 
-                    // Highlight multi-line comments
-                    code = code.replace(/\/\*[\s\S]*?\*\//g, '<span style="color: #8b949e;">$&</span>')
-
-                    return code + '\n\n' // padding at the bottom
+                    return result + '\n\n'
                   })()
                 }}
               />
