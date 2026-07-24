@@ -240,23 +240,22 @@ export default async function DSARevisionPage({ params }: Props) {
             background: transparent !important;
             white-space: pre-wrap !important;
             overflow: visible !important;
-            color: #05070f !important; /* Force standard text/operators to be deep black */
+            color: #000000 !important; /* Force standard text/operators to be solid black */
           }
           .code-block-body code,
           .code-block-body span {
-            font-family: 'Intel One Mono', 'JetBrains Mono', Consolas, monospace !important; /* Premium curved developer monospace stack */
-            font-size: 14.5pt !important; /* Enlarge code font to 14.5pt */
-            line-height: 1.7 !important;
-            letter-spacing: 0.02em !important; /* MonoLisa-like wider horizontal letter spacing */
-            color: #05070f !important;
-            font-weight: 500 !important; /* Medium weight for thick stroke print readability */
+            font-family: 'Ubuntu Mono', 'Liberation Mono', 'DejaVu Sans Mono', Consolas, monospace !important; /* Linux gedit editor monospace stack */
+            font-size: 15.5pt !important; /* Make font size even bigger */
+            line-height: 1.6 !important;
+            color: #000000 !important;
+            font-weight: 700 !important; /* Bold weight for extremely thick stroke readability */
             font-style: normal !important;
           }
 
           /* Clear all syntax colors on print to ensure everything is pure black */
           .code-block-body span[style*="color:"] {
-            color: #05070f !important;
-            font-weight: 500 !important;
+            color: #000000 !important;
+            font-weight: 700 !important;
             font-style: normal !important;
           }
         }
