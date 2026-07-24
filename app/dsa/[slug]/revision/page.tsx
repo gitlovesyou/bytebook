@@ -43,7 +43,7 @@ export default async function DSARevisionPage({ params }: Props) {
     }
   })
 
-  const progressMap = new Map(progressRecords.map(r => [r.questionId, r]))
+  const progressMap = new Map(progressRecords.map((r: { questionId: number; solved: boolean; revisit: boolean; userCode: string | null }) => [r.questionId, r]))
 
   // Filter only solved (ticked) questions that have code or are marked solved
   const solvedQuestions = topic.questions.filter(q => {
@@ -76,7 +76,7 @@ export default async function DSARevisionPage({ params }: Props) {
   // Sizing config
   const totalQuestions = topic.questions.length
   const solvedCount = solvedQuestions.length
-  const codeCount = progressRecords.filter(r => !!r.userCode).length
+  const codeCount = progressRecords.filter((r: { userCode: string | null }) => !!r.userCode).length
 
   // Difficulty mappings
   const DIFF_STARS = ['', '★☆☆☆☆', '★★☆☆☆', '★★★☆☆', '★★★★☆', '★★★★★']
