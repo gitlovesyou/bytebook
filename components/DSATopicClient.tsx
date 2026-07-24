@@ -562,13 +562,14 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
 
                     let escaped = escape(editorCode)
 
-                    const KEYWORDS = /\b(using|namespace|int|char|bool|float|double|long|short|unsigned|void|return|if|else|for|while|do|switch|case|break|continue|class|struct|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
+                    const KEYWORDS = /\b(using|namespace|struct|class|void|int|char|bool|float|double|long|short|unsigned|return|if|else|for|while|do|switch|case|break|continue|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
                     const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
                     const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
                     const NUMBERS  = /\b(\d+\.?\d*)\b/g
                     const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
+                    const CUSTOM_TYPES = /\b(Process|Node|TreeNode|ListNode|Solution|Graph|Queue|Stack|Heap)\b/g
                     const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
-                    const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print)\b/g
+                    const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print|max|min|sort)\b/g
 
                     type Tok = { start: number; end: number; color: string; content: string }
                     const tokens: Tok[] = []
@@ -581,10 +582,33 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                       }
                     }
 
+                    // Extract types inside template angle brackets: e.g. <Process> or <int>
+                    const templates = /&lt;([a-zA-Z_]\w*)&gt;/g
+                    templates.lastIndex = 0
+                    let tm: RegExpExecArray | null
+                    while ((tm = templates.exec(escaped)) !== null) {
+                      // Match only the inner word
+                      const word = tm[1]
+                      const wordIndex = tm.index + 4 // after "&lt;"
+                      const color = /^(int|char|bool|float|double|void)$/.test(word) ? '#ff7b72' : '#d2a6ff'
+                      tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
+                    }
+
+                    // Extract types following class/struct: e.g. struct Process
+                    const structClass = /\b(struct|class)\s+([a-zA-Z_]\w*)\b/g
+                    structClass.lastIndex = 0
+                    let sc: RegExpExecArray | null
+                    while ((sc = structClass.exec(escaped)) !== null) {
+                      const word = sc[2]
+                      const wordIndex = sc.index + sc[1].length + 1
+                      tokens.push({ start: wordIndex, end: wordIndex + word.length, color: '#d2a6ff', content: word })
+                    }
+
                     addTokens(COMMENTS, '#8b949e')
                     addTokens(STRINGS, '#a5d6ff')
                     addTokens(PREPROC, '#ff7b72')
                     addTokens(KEYWORDS, '#ff7b72')
+                    addTokens(CUSTOM_TYPES, '#d2a6ff')
                     addTokens(NUMBERS, '#79c0ff')
                     addTokens(FUNCS, '#dcdcaa')
                     addTokens(TYPES, '#ffa657')

@@ -93,9 +93,9 @@ export default async function DSARevisionPage({ params }: Props) {
           body {
             background: #ffffff !important;
             color: #1e293b !important;
-            font-size: 12px !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            font-size: 12px !important;
           }
           .no-print {
             display: none !important;
@@ -105,22 +105,67 @@ export default async function DSARevisionPage({ params }: Props) {
             margin: 0 !important;
             max-width: 100% !important;
           }
-          .print-card {
+          .revision-layout-with-toc {
+            display: block !important;
+          }
+          
+          /* Question block print formatting */
+          div[id^="revision-q-"] {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            border: 1px solid #e2e8f0 !important;
-            background: #ffffff !important;
-            box-shadow: none !important;
-            margin-bottom: 16px !important;
+            margin-bottom: 24px !important;
           }
-          .print-code {
-            background: #f8fafc !important;
-            color: #0f172a !important;
+
+          /* Notepad/gedit style code editor box */
+          .code-block-wrap {
             border: 1px solid #cbd5e1 !important;
+            border-left: 3px solid #6366f1 !important; /* Notepad margin line indicator */
+            background: #fafafa !important;
+            box-shadow: none !important;
+            border-radius: 6px !important;
+            overflow: hidden !important;
           }
-          .print-code-pre {
-            color: #0f172a !important;
+          .code-block-header {
+            background: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+            padding: 4px 10px !important;
+            display: flex !important;
+            justify-content: space-between !important;
           }
+          .code-block-header .code-block-lang {
+            color: #475569 !important;
+            font-weight: 800 !important;
+            font-size: 10px !important;
+          }
+          .code-block-header div {
+            display: none !important; /* Hide copy/edit buttons in print */
+          }
+          .code-block-body {
+            background: #fafafa !important;
+            padding: 0 !important;
+          }
+          .code-block-body pre {
+            margin: 0 !important;
+            padding: 8px 12px !important;
+            background: transparent !important;
+            white-space: pre-wrap !important;
+            overflow: visible !important;
+          }
+          .code-block-body code,
+          .code-block-body span {
+            font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace !important;
+            font-size: 11px !important;
+            line-height: 1.5 !important;
+          }
+
+          /* Custom light-mode syntax colors for printed paper compatibility */
+          .code-block-body span[style*="color: #ff7b72"] { color: #d73a49 !important; font-weight: bold !important; } /* Keywords (salmon -> red) */
+          .code-block-body span[style*="color: #a5d6ff"] { color: #032f62 !important; } /* Strings (light blue -> dark blue) */
+          .code-block-body span[style*="color: #8b949e"] { color: #6a737d !important; font-style: italic !important; } /* Comments (grey -> dark grey) */
+          .code-block-body span[style*="color: #79c0ff"] { color: #005cc5 !important; } /* Numbers */
+          .code-block-body span[style*="color: #d2a6ff"] { color: #6f42c1 !important; } /* Custom classes/structs (purple) */
+          .code-block-body span[style*="color: #ffa657"] { color: #e36209 !important; } /* Standard Types */
+          .code-block-body span[style*="color: #dcdcaa"] { color: #005cc5 !important; } /* Functions */
         }
       `}} />
 

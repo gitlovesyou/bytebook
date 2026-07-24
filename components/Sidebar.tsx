@@ -169,6 +169,11 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
   const [sidebarImportance, setSidebarImportance] = useState('all')
   const [sidebarStatus, setSidebarStatus] = useState('all')
   const [sidebarSort, setSidebarSort] = useState('default')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Auto-sort by frequency when a company filter is applied inside the sidebar
   useEffect(() => {
@@ -533,7 +538,7 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                           {item.icon && <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>}
                           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
                         </div>
-                        {totalCount > 0 && (
+                        {mounted && totalCount > 0 && (
                           <span style={{
                             fontSize: 9.5,
                             fontWeight: 800,

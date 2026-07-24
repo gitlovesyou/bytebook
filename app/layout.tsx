@@ -30,8 +30,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body>
         <script dangerouslySetInnerHTML={{
           __html: `
             try {
@@ -40,6 +38,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             } catch(e) {}
           `
         }} />
+      </head>
+      <body>
         <div className="layout-shell">
           <Header />
           <Sidebar nav={nav} />
