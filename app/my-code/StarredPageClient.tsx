@@ -302,8 +302,8 @@ export function StarredPageClient() {
           .code-block-body code,
           .code-block-body span {
             font-family: 'Ubuntu Mono', 'Liberation Mono', 'DejaVu Sans Mono', Consolas, monospace !important; /* Linux gedit editor monospace stack */
-            font-size: 16.5pt !important; /* Make font size even bigger */
-            line-height: 1.65 !important;
+            font-size: 11.5pt !important; /* Make font size even bigger */
+            line-height: 1.5 !important;
             color: #000000 !important;
             font-weight: 500 !important; /* Medium normal weight for clean sharp printout */
             font-style: normal !important;

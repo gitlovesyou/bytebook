@@ -267,8 +267,8 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
         <div style={{
           margin: '14px 12px 6px',
           padding: '10px 12px',
-          background: 'rgba(255, 255, 255, 0.02)',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: 8,
           display: 'flex',
           flexDirection: 'column',
@@ -283,8 +283,8 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
             onChange={(e) => setSidebarSearch(e.target.value)}
             style={{
               width: '100%',
-              background: 'rgba(0,0,0,0.2)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               padding: '4px 8px',
               fontSize: 12,
@@ -300,8 +300,8 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
               onChange={(e) => setSidebarCompany(e.target.value)}
               style={{
                 flex: 1,
-                background: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 padding: '3px 6px',
                 fontSize: 11,
@@ -322,8 +322,8 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
               onChange={(e) => setSidebarImportance(e.target.value)}
               style={{
                 flex: 1,
-                background: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 padding: '3px 6px',
                 fontSize: 11,
@@ -347,8 +347,8 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
               onChange={(e) => setSidebarStatus(e.target.value)}
               style={{
                 flex: 1,
-                background: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 padding: '3px 6px',
                 fontSize: 11,
@@ -369,8 +369,8 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
               onChange={(e) => setSidebarSort(e.target.value)}
               style={{
                 flex: 1,
-                background: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 padding: '3px 6px',
                 fontSize: 11,
@@ -559,7 +559,7 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
 
                     {/* Dynamic Outline Checklist Grouped by Subtopic */}
                     {isExpanded && groupedChildren.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: 16, margin: '8px 0', borderLeft: '1px solid rgba(255,255,255,0.05)', marginLeft: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: 16, margin: '8px 0', borderLeft: '1px solid var(--border)', marginLeft: '12px' }}>
                         {groupedChildren.map(group => (
                           <div key={group.subtopic} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {/* Subtopic Header divider label */}
@@ -568,7 +568,7 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                               fontWeight: 900,
                               textTransform: 'uppercase',
                               letterSpacing: '0.8px',
-                              color: 'var(--brand-light)',
+                              color: 'var(--brand)',
                               opacity: 0.95,
                               paddingLeft: 4,
                               marginBottom: 2,
@@ -594,13 +594,13 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                       minWidth: 0,
                                       padding: '5px 8px',
                                       borderRadius: '6px',
-                                      background: isSubActive ? 'rgba(99, 102, 241, 0.08)' : 'transparent',
-                                      border: isSubActive ? '1px solid rgba(99, 102, 241, 0.15)' : '1px solid transparent',
+                                      background: isSubActive ? 'var(--brand-dim)' : 'transparent',
+                                      border: isSubActive ? '1px solid var(--brand-glow)' : '1px solid transparent',
                                       transition: 'all 0.15s var(--ease)'
                                     }}
                                     onMouseEnter={(e) => {
                                       if (!isSubActive) {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                                        e.currentTarget.style.background = 'var(--surface-3)'
                                       }
                                     }}
                                     onMouseLeave={(e) => {
@@ -619,9 +619,9 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                         fontFamily: 'JetBrains Mono, monospace',
                                         fontSize: '9.5px',
                                         fontWeight: 700,
-                                        color: isSubActive ? '#a5b4fc' : 'var(--brand-light)',
-                                        background: 'rgba(99, 102, 241, 0.08)',
-                                        border: '1px solid rgba(99, 102, 241, 0.25)',
+                                        color: 'var(--brand)',
+                                        background: 'var(--brand-dim)',
+                                        border: '1px solid var(--brand-glow)',
                                         borderRadius: 5,
                                         padding: '3px 8px',
                                         minWidth: '70px',
@@ -635,13 +635,13 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                         flexShrink: 0
                                       }}
                                       onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)';
-                                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.5)';
+                                        e.currentTarget.style.background = 'var(--brand-glow)';
+                                        e.currentTarget.style.borderColor = 'var(--brand)';
                                         e.currentTarget.style.transform = 'scale(1.03)';
                                       }}
                                       onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.08)';
-                                        e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.25)';
+                                        e.currentTarget.style.background = 'var(--brand-dim)';
+                                        e.currentTarget.style.borderColor = 'var(--brand-glow)';
                                         e.currentTarget.style.transform = 'scale(1)';
                                       }}
                                     >
@@ -653,7 +653,7 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                       onClick={(e) => { e.stopPropagation(); toggle(child.id); }}
                                       style={{
                                         width: 14, height: 14, borderRadius: '50%',
-                                        border: `1.5px solid ${isSolved ? '#10b981' : 'rgba(255,255,255,0.25)'}`,
+                                        border: `1.5px solid ${isSolved ? '#10b981' : 'var(--text-4)'}`,
                                         background: isSolved ? '#10b981' : 'transparent',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s'
@@ -680,7 +680,7 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                       onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
                                       onMouseLeave={(e) => { if (!isRevisit) e.currentTarget.style.opacity = '0.35' }}
                                     >
-                                      <span style={{ fontSize: '13px', color: isRevisit ? '#f59e0b' : 'rgba(255,255,255,0.7)', fontWeight: 900, lineHeight: 1 }}>★</span>
+                                      <span style={{ fontSize: '13px', color: isRevisit ? '#f59e0b' : 'var(--text-4)', fontWeight: 900, lineHeight: 1 }}>★</span>
                                     </div>
 
                                     <Link
@@ -696,10 +696,10 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         transition: 'all 0.15s',
-                                        fontWeight: 450,
+                                        fontWeight: isSubActive ? 700 : 450,
                                         color: isSubActive
-                                          ? '#a5b4fc'
-                                          : (isSolved ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.85)'),
+                                          ? 'var(--brand)'
+                                          : (isSolved ? 'var(--text-3)' : 'var(--text-2)'),
                                       }}
                                       title={child.label}
                                     >
