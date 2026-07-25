@@ -48,7 +48,7 @@ export default async function DSATopicPage({ params }: Props) {
   return (
     <div style={{ padding: '20px 24px', maxWidth: '100%' }}>
       {/* Breadcrumb (Compact) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 12.5 }}>
+      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 12.5 }}>
         <Link href="/" style={{ color: 'var(--text-4)', textDecoration: 'none' }}>Home</Link>
         <span style={{ color: 'var(--text-4)' }}>/</span>
         <Link href="/dsa" style={{ color: 'var(--text-4)', textDecoration: 'none' }}>DSA Master Sheet</Link>
@@ -57,7 +57,7 @@ export default async function DSATopicPage({ params }: Props) {
       </div>
 
       {/* Header (Horizontal Flex Compact) */}
-      <div style={{
+      <div className="no-print" style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         gap: 16, flexWrap: 'wrap', marginBottom: 20, paddingBottom: 12,
         borderBottom: '1px solid var(--border)'

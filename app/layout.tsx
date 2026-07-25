@@ -31,16 +31,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&family=Intel+One+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet" />
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            try {
-              const t = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-              document.documentElement.setAttribute('data-theme', t);
-            } catch(e) {}
-          `
-        }} />
       </head>
       <body>
+        <script
+          id="theme-loader"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const t = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+                document.documentElement.setAttribute('data-theme', t);
+              } catch(e) {}
+            `
+          }}
+        />
         <div className="layout-shell">
           <Header />
           <Sidebar nav={nav} />

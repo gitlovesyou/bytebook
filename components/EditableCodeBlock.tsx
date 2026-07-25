@@ -27,6 +27,78 @@ export function EditableCodeBlock({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
 
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+  const undoStackRef = useRef<string[]>([])
+  const redoStackRef = useRef<string[]>([])
+  const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const updateCanUndoRedo = () => {
+    setCanUndo(undoStackRef.current.length > 0)
+    setCanRedo(redoStackRef.current.length > 0)
+  }
+
+  const handleCodeChange = (newVal: string, forceHistoryPush = false) => {
+    setCode(newVal)
+    
+    if (redoStackRef.current.length > 0) {
+      redoStackRef.current = []
+      setCanRedo(false)
+    }
+
+    if (forceHistoryPush) {
+      if (undoStackRef.current[undoStackRef.current.length - 1] !== code) {
+        undoStackRef.current.push(code)
+        if (undoStackRef.current.length > 100) undoStackRef.current.shift()
+        setCanUndo(true)
+      }
+      if (historyTimeoutRef.current) {
+        clearTimeout(historyTimeoutRef.current)
+        historyTimeoutRef.current = null
+      }
+    } else {
+      if (historyTimeoutRef.current) {
+        clearTimeout(historyTimeoutRef.current)
+      }
+      const prevCode = code
+      historyTimeoutRef.current = setTimeout(() => {
+        if (undoStackRef.current[undoStackRef.current.length - 1] !== prevCode) {
+          undoStackRef.current.push(prevCode)
+          if (undoStackRef.current.length > 100) undoStackRef.current.shift()
+          setCanUndo(true)
+        }
+        historyTimeoutRef.current = null
+      }, 800)
+    }
+  }
+
+  const handleUndo = () => {
+    if (undoStackRef.current.length === 0) return
+    
+    if (historyTimeoutRef.current) {
+      clearTimeout(historyTimeoutRef.current)
+      historyTimeoutRef.current = null
+    }
+
+    const currentVal = code
+    const prevVal = undoStackRef.current.pop()!
+    
+    redoStackRef.current.push(currentVal)
+    setCode(prevVal)
+    updateCanUndoRedo()
+  }
+
+  const handleRedo = () => {
+    if (redoStackRef.current.length === 0) return
+
+    const currentVal = code
+    const nextVal = redoStackRef.current.pop()!
+
+    undoStackRef.current.push(currentVal)
+    setCode(nextVal)
+    updateCanUndoRedo()
+  }
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const currentTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' | null
@@ -51,6 +123,14 @@ export function EditableCodeBlock({
 
   useEffect(() => {
     setCode(initialCode)
+    undoStackRef.current = []
+    redoStackRef.current = []
+    setCanUndo(false)
+    setCanRedo(false)
+    if (historyTimeoutRef.current) {
+      clearTimeout(historyTimeoutRef.current)
+      historyTimeoutRef.current = null
+    }
   }, [initialCode])
 
   const handleCopy = async () => {
@@ -79,6 +159,22 @@ export function EditableCodeBlock({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault()
+      if (e.shiftKey) {
+        handleRedo()
+      } else {
+        handleUndo()
+      }
+      return
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault()
+      handleRedo()
+      return
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault()
       const textarea = e.currentTarget
@@ -86,7 +182,7 @@ export function EditableCodeBlock({
       const end = textarea.selectionEnd
       const val = textarea.value
       const newVal = val.substring(0, start) + '    ' + val.substring(end)
-      setCode(newVal)
+      handleCodeChange(newVal, true)
       // Reset selection
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + 4
@@ -110,7 +206,7 @@ export function EditableCodeBlock({
           const rem = len % 4
           const deleteCount = rem === 0 ? 4 : rem
           const newVal = val.substring(0, start - deleteCount) + val.substring(end)
-          setCode(newVal)
+          handleCodeChange(newVal, true)
           
           setTimeout(() => {
             textarea.selectionStart = textarea.selectionEnd = start - deleteCount
@@ -151,7 +247,7 @@ export function EditableCodeBlock({
       }
 
       const newVal = val.substring(0, start) + insertion + val.substring(end)
-      setCode(newVal)
+      handleCodeChange(newVal, true)
 
       // Reset selection position after rendering
       setTimeout(() => {
@@ -177,7 +273,7 @@ export function EditableCodeBlock({
       const closingChar = autoPairs[e.key]
       
       const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
-      setCode(newVal)
+      handleCodeChange(newVal, true)
       
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + 1
@@ -347,6 +443,10 @@ export function EditableCodeBlock({
     return outputLines.join('\n')
   }, [code, hasCode, theme])
 
+  const linesToRender = useMemo(() => {
+    return highlightedHtml.split('\n')
+  }, [highlightedHtml])
+
   if (isEditing) {
     return (
       <div className="code-block-wrap" style={{
@@ -374,7 +474,7 @@ export function EditableCodeBlock({
           <textarea
             ref={textareaRef}
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => handleCodeChange(e.target.value)}
             onKeyDown={handleKeyDown}
             style={{
               width: '100%',
@@ -401,6 +501,44 @@ export function EditableCodeBlock({
           background: theme === 'light' ? '#f8fafc' : '#090d13',
           borderTop: `1px solid ${theme === 'light' ? '#e2e8f0' : 'var(--border)'}`
         }}>
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo || isPending}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 6,
+              border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'var(--border)'}`,
+              background: theme === 'light' ? '#ffffff' : 'transparent',
+              color: theme === 'light' ? '#334155' : 'var(--text-3)',
+              cursor: canUndo ? 'pointer' : 'not-allowed',
+              fontSize: 11.5,
+              fontWeight: 700,
+              transition: 'all 0.15s',
+              opacity: canUndo ? 1 : 0.4
+            }}
+            title="Undo"
+          >
+            ↩️ Undo
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo || isPending}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 6,
+              border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'var(--border)'}`,
+              background: theme === 'light' ? '#ffffff' : 'transparent',
+              color: theme === 'light' ? '#334155' : 'var(--text-3)',
+              cursor: canRedo ? 'pointer' : 'not-allowed',
+              fontSize: 11.5,
+              fontWeight: 700,
+              transition: 'all 0.15s',
+              opacity: canRedo ? 1 : 0.4
+            }}
+            title="Redo"
+          >
+            ↪️ Redo
+          </button>
           <button
             onClick={() => {
               setCode(initialCode)
@@ -510,7 +648,26 @@ export function EditableCodeBlock({
             whiteSpace: 'pre-wrap',
             color: theme === 'light' ? '#24292e' : '#c9d1d9'
           }}>
-            <code dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+            <code style={{ display: 'block' }}>
+              {linesToRender.map((lineHtml, lineIdx) => (
+                <div key={lineIdx} className="code-line" style={{ display: 'flex', alignItems: 'flex-start' }}>
+                  <span className="code-line-number" style={{
+                    width: '3em',
+                    textAlign: 'right',
+                    color: theme === 'light' ? '#64748b' : '#8b949e',
+                    paddingRight: '12px',
+                    marginRight: '12px',
+                    borderRight: theme === 'light' ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.08)',
+                    userSelect: 'none',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    flexShrink: 0,
+                    opacity: 0.75
+                  }}>{lineIdx + 1}</span>
+                  <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} style={{ flex: 1, whiteSpace: 'pre-wrap' }} />
+                </div>
+              ))}
+            </code>
           </pre>
         </div>
       ) : (

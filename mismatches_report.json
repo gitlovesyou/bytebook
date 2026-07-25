@@ -1,0 +1,192 @@
+{
+  "mismatches": [
+    {
+      "declared": "Sort array with 0s 1s and 2s (Dutch Flag)",
+      "sheet_key": "Sort array with 0's 1's and 2's (Dutch Flag)",
+      "url": "https://leetcode.com/problems/sort-colors/",
+      "type": "mismatch"
+    },
+    {
+      "declared": "Majority Element I (Boyer-Moore)",
+      "sheet_key": "Majority Element I (Boyer - Moore)",
+      "url": "https://leetcode.com/problems/majority-element/",
+      "type": "mismatch"
+    },
+    {
+      "declared": "Find row with maximum 1s",
+      "sheet_key": "Find row with maximum 1's",
+      "url": "https://leetcode.com/problems/row-with-maximum-ones/description/",
+      "type": "mismatch"
+    },
+    {
+      "declared": "Search a 2D Matrix II",
+      "sheet_key": "Search a 2D Matrix  II",
+      "url": "https://leetcode.com/problems/search-a-2d-matrix-ii/description/",
+      "type": "mismatch"
+    },
+    {
+      "declared": "Find Peak Element II",
+      "sheet_key": "Find Peak Element - II",
+      "url": "https://leetcode.com/problems/find-a-peak-element-ii/description/",
+      "type": "mismatch"
+    },
+    {
+      "declared": "Sqrt(x)",
+      "sheet_key": "Sqrt (x)",
+      "url": "https://leetcode.com/problems/sqrtx/",
+      "type": "mismatch"
+    }
+  ],
+  "completely_missing": [
+    {
+      "declared": "Print first letter of every word",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Painter",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Print N to 1 without loop",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Classes, Objects & Constructors",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Inheritance & Polymorphism",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Encapsulation & Abstraction",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Interfaces & Abstract Classes",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Singleton Pattern",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Factory Pattern",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Count Nodes / Find Length",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Delete Node in a Linked List",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Delete the Middle Node",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Segregate Even and Odd Nodes",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Insert/Delete in a Doubly Linked List",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Min Stack (O(1) getMin)",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "The Celebrity Problem",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Lowest Common Ancestor of a BST",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Implement Min/Max Heap",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Move Zeroes (Two Pointer Intuition)",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Number of Sub-arrays of Size K and Average \u2265 Threshold",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Dijkstra",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Prim",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Kosaraju",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Tarjan",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    },
+    {
+      "declared": "Count all subsequences with sum K",
+      "sheet_key": null,
+      "url": null,
+      "type": "completely missing"
+    }
+  ]
+}

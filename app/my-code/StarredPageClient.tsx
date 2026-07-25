@@ -60,6 +60,7 @@ export function StarredPageClient() {
   const [revisit, setRevisit] = useState<Set<number>>(new Set())
   const [solved, setSolved] = useState<Set<number>>(new Set())
   const [userCodes, setUserCodes] = useState<Record<number, string>>({})
+  const [customQuestions, setCustomQuestions] = useState<any[]>([])
   const [loaded, setLoaded] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -69,9 +70,11 @@ export function StarredPageClient() {
       const rev = localStorage.getItem(STORAGE_REVISIT_KEY)
       const sol = localStorage.getItem(STORAGE_KEY)
       const codes = localStorage.getItem(STORAGE_CODE_KEY)
+      const rawCustom = localStorage.getItem('bytebook_custom_questions')
       if (rev) setRevisit(new Set(JSON.parse(rev)))
       if (sol) setSolved(new Set(JSON.parse(sol)))
       if (codes) setUserCodes(JSON.parse(codes))
+      if (rawCustom) setCustomQuestions(JSON.parse(rawCustom))
     } catch { }
     setLoaded(true)
   }, [])
@@ -92,9 +95,40 @@ export function StarredPageClient() {
     } catch { }
   }, [loaded])
 
+  const allQuestionsMerged = useMemo(() => {
+    const customMeta = customQuestions.map(q => {
+      let phaseKey = 'Phase 1'
+      let phaseColor = '#6366f1'
+      let topicName = 'Arrays'
+      let topicIcon = '[]'
+      for (const [pk, pData] of Object.entries(DSA_DATA)) {
+        const t = pData.topics.find(topic => topic.slug === q.topicSlug)
+        if (t) {
+          phaseKey = pk
+          phaseColor = PHASE_COLORS[pk] || '#6366f1'
+          topicName = t.name
+          topicIcon = t.icon
+          break
+        }
+      }
+      return {
+        id: q.id,
+        name: q.name,
+        subtopic: q.subtopic,
+        difficulty: q.difficulty,
+        topic: topicName,
+        topicSlug: q.topicSlug,
+        topicIcon: topicIcon,
+        phase: phaseKey,
+        phaseColor
+      }
+    })
+    return [...ALL_QUESTIONS, ...customMeta]
+  }, [customQuestions])
+
   const starredQuestions = useMemo(
-    () => ALL_QUESTIONS.filter(q => revisit.has(q.id)),
-    [revisit]
+    () => allQuestionsMerged.filter(q => revisit.has(q.id)),
+    [allQuestionsMerged, revisit]
   )
 
   const filtered = useMemo(() => {
@@ -263,63 +297,66 @@ export function StarredPageClient() {
 
           /* Premium code box container */
           .code-block-wrap {
-            border: 1px solid #cbd5e1 !important;
-            background: #fafbfc !important;
+            border: 1px solid var(--border) !important;
             box-shadow: none !important;
             border-radius: 8px !important;
-            margin-left: 58px !important; 
+            margin-left: 0 !important; 
             overflow: hidden !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .code-block-header {
             font-family: 'JetBrains Mono', monospace !important;
             font-size: 9.5pt !important;
-            font-weight: 500 !important;
-            color: #64748b !important;
-            border-bottom: 1px solid #e2e8f0 !important;
+            font-weight: 500;
+            color: var(--text-3) !important;
+            border-bottom: 1px solid var(--border) !important;
             padding: 8px 18px !important;
-            background-color: #f8fafc !important;
+            background-color: var(--surface-2) !important;
             text-transform: uppercase !important;
             letter-spacing: 0.05em !important;
             display: flex !important;
             justify-content: space-between !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .code-block-header div {
             display: none !important; /* Hide editor toolbar buttons in print */
           }
           .code-block-body {
-            background: #fafbfc !important;
             padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .code-block-body pre,
           .code-block-pre {
             margin: 0 !important;
-            padding: 22px 24px !important;
+            padding: 16px 20px !important;
             background: transparent !important;
             white-space: pre-wrap !important;
             overflow: visible !important;
-            color: #000000 !important; /* Force standard text/operators to be solid black */
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .code-block-body code,
           .code-block-body span {
-            font-family: 'Ubuntu Mono', 'Liberation Mono', 'DejaVu Sans Mono', Consolas, monospace !important; /* Linux gedit editor monospace stack */
-            font-size: 11.5pt !important; /* Make font size even bigger */
+            font-family: 'JetBrains Mono', 'Ubuntu Mono', monospace !important;
+            font-size: 11pt !important;
             line-height: 1.5 !important;
-            color: #000000 !important;
-            font-weight: 500 !important; /* Medium normal weight for clean sharp printout */
-            font-style: normal !important;
-          }
-
-          /* Clear all syntax colors on print to ensure everything is pure black */
-          .code-block-body span[style*="color:"] {
-            color: #000000 !important;
             font-weight: 500 !important;
             font-style: normal !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
           /* Indentation guidelines style for high-quality printing */
           .indent-guide {
             border-left: 1.2px dashed #94a3b8 !important;
             opacity: 0.8 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}} />

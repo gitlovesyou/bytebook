@@ -131,6 +131,20 @@ const getPlatformDetailsFromLink = (name: string, id: number) => {
 }
 
 function getEnrichedQuestion(q: any) {
+  if (q.isCustom) {
+    return {
+      ...q,
+      companies: q.companies || ['Custom'],
+      companiesData: q.companiesData || (q.companies || ['Custom']).map((c: string) => ({ name: c, count: 50 })),
+      frequency: q.frequency || 50,
+      acRate: q.acRate || 50.0,
+      importance: q.importance || 'Medium',
+      platform: q.platform || 'LC',
+      leetcodeNumber: q.leetcodeNumber || q.id,
+      questionSlug: q.questionSlug || q.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-'),
+      link: q.link || '#'
+    }
+  }
   const hash = (q.id * 1831) % 1000
   const companyCount = (hash % 3) + 1
   const companiesData: { name: string; count: number }[] = []
@@ -168,8 +182,44 @@ function getEnrichedQuestion(q: any) {
   }
 }
 
+function parseCodeNotes(rawCode: string) {
+  const result = {
+    code: rawCode,
+    pattern: '',
+    approach: '',
+    complexity: '',
+    pitfalls: ''
+  }
+  if (!rawCode) return result
+
+  const match = rawCode.match(/^\/\*([\s\S]*?)\*\//)
+  if (match) {
+    const blockContent = match[1]
+    const patternMatch = blockContent.match(/\[PATTERN\]([\s\S]*?)(?=\[\w+\]|$)/)
+    const approachMatch = blockContent.match(/\[APPROACH\]([\s\S]*?)(?=\[\w+\]|$)/)
+    const complexityMatch = blockContent.match(/\[COMPLEXITY\]([\s\S]*?)(?=\[\w+\]|$)/)
+    const pitfallsMatch = blockContent.match(/\[PITFALLS\]([\s\S]*?)(?=\[\w+\]|$)/)
+
+    if (patternMatch || approachMatch || complexityMatch || pitfallsMatch) {
+      if (patternMatch) result.pattern = patternMatch[1].trim()
+      if (approachMatch) result.approach = approachMatch[1].trim()
+      if (complexityMatch) result.complexity = complexityMatch[1].trim()
+      if (pitfallsMatch) result.pitfalls = pitfallsMatch[1].trim()
+      result.code = rawCode.substring(match[0].length).trim()
+    }
+  }
+  return result
+}
+
+function serializeCodeNotes(code: string, pattern: string, approach: string, complexity: string, pitfalls: string) {
+  if (!pattern.trim() && !approach.trim() && !complexity.trim() && !pitfalls.trim()) {
+    return code
+  }
+  return `/*\n[PATTERN]\n${pattern.trim()}\n\n[APPROACH]\n${approach.trim()}\n\n[COMPLEXITY]\n${complexity.trim()}\n\n[PITFALLS]\n${pitfalls.trim()}\n*/\n\n${code.trim()}`
+}
+
 interface ActiveQuestionWorkspaceProps {
-  active: NonNullable<Topic['questions'][number]>
+  active: any
   phaseColor: string
   initialCode: string
   topicSlug: string
@@ -177,6 +227,8 @@ interface ActiveQuestionWorkspaceProps {
   setIsFocusMode: (f: boolean) => void
   onSave: (code: string) => void
   onClose: () => void
+  onDelete?: () => void
+  onUpdateMetadata?: (updates: any) => void
 }
 
 const BOILERPLATES: Record<string, string> = {
@@ -187,21 +239,155 @@ const BOILERPLATES: Record<string, string> = {
   java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Write Java code here\n        System.out.println("Hello World");\n    }\n}`
 }
 
-function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, isFocusMode, setIsFocusMode, onSave, onClose }: ActiveQuestionWorkspaceProps) {
+function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, isFocusMode, setIsFocusMode, onSave, onClose, onDelete, onUpdateMetadata }: ActiveQuestionWorkspaceProps) {
   const [lang, setLang] = useState<string>('cpp')
-  const [editorCode, setEditorCode] = useState<string>(initialCode || BOILERPLATES.cpp)
+  
+  const parsed = useMemo(() => parseCodeNotes(initialCode || ''), [initialCode])
+  const [editorCode, setEditorCode] = useState<string>(parsed.code || BOILERPLATES.cpp)
+  const [patternNotes, setPatternNotes] = useState<string>(parsed.pattern || '')
+  const [approachNotes, setApproachNotes] = useState<string>(parsed.approach || '')
+  const [complexityNotes, setComplexityNotes] = useState<string>(parsed.complexity || '')
+  const [pitfallsNotes, setPitfallsNotes] = useState<string>(parsed.pitfalls || '')
   const [isSaved, setIsSaved] = useState<boolean>(false)
   const [stdin, setStdin] = useState<string>('')
   const [consoleOutput, setConsoleOutput] = useState<string>('')
   const [isRunning, setIsRunning] = useState<boolean>(false)
   const [runSuccess, setRunSuccess] = useState<boolean | null>(null)
   const [consoleTab, setConsoleTab] = useState<'input' | 'output'>('input')
+  const [workspaceTab, setWorkspaceTab] = useState<'code' | 'console' | 'approach' | 'complexity'>('code')
   const [showRunner, setShowRunner] = useState<boolean>(true)
   const [fontSize, setFontSize] = useState<number>(14)
 
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [activeLine, setActiveLine] = useState<number>(1)
   const [showSettings, setShowSettings] = useState<boolean>(false)
+
+  const [customTitle, setCustomTitle] = useState<string>(active.name)
+  const [customDifficulty, setCustomDifficulty] = useState<number>(active.difficulty || 3)
+  const [customLink, setCustomLink] = useState<string>(active.link || '')
+  const [customPlatform, setCustomPlatform] = useState<string>(active.platform || 'LC')
+  const [customLeetCodeNumber, setCustomLeetCodeNumber] = useState<number | undefined>(active.leetcodeNumber)
+
+  const [lcFetchNumber, setLcFetchNumber] = useState<string>('')
+  const [isFetchingLc, setIsFetchingLc] = useState<boolean>(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setCustomTitle(active.name)
+    setCustomDifficulty(active.difficulty || 3)
+    setCustomLink(active.link || '')
+    setCustomPlatform(active.platform || 'LC')
+    setCustomLeetCodeNumber(active.leetcodeNumber)
+    setLcFetchNumber('')
+    setFetchError(null)
+
+    const freshParsed = parseCodeNotes(initialCode || '')
+    setEditorCode(freshParsed.code || BOILERPLATES.cpp)
+    setPatternNotes(freshParsed.pattern || '')
+    setApproachNotes(freshParsed.approach || '')
+    setComplexityNotes(freshParsed.complexity || '')
+    setPitfallsNotes(freshParsed.pitfalls || '')
+  }, [active, initialCode])
+
+  const handleFetchLeetCode = async () => {
+    if (!lcFetchNumber.trim()) return
+    setIsFetchingLc(true)
+    setFetchError(null)
+    try {
+      const res = await fetch(`/api/leetcode?number=${encodeURIComponent(lcFetchNumber.trim())}`)
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to fetch LeetCode question')
+      }
+      const data = await res.json()
+      setCustomTitle(data.title)
+      setCustomDifficulty(data.difficulty)
+      setCustomLink(data.url)
+      setCustomPlatform('LC')
+      setCustomLeetCodeNumber(data.id)
+      setLcFetchNumber('')
+    } catch (err: any) {
+      console.error(err)
+      setFetchError(err.message || 'Error fetching question')
+      setTimeout(() => setFetchError(null), 3000)
+    } finally {
+      setIsFetchingLc(false)
+    }
+  }
+
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+
+  const undoStackRef = useRef<string[]>([])
+  const redoStackRef = useRef<string[]>([])
+  const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const updateCanUndoRedo = () => {
+    setCanUndo(undoStackRef.current.length > 0)
+    setCanRedo(redoStackRef.current.length > 0)
+  }
+
+  const handleCodeChange = (newVal: string, forceHistoryPush = false) => {
+    setEditorCode(newVal)
+    
+    // Clear redo stack on typing
+    if (redoStackRef.current.length > 0) {
+      redoStackRef.current = []
+      setCanRedo(false)
+    }
+
+    if (forceHistoryPush) {
+      if (undoStackRef.current[undoStackRef.current.length - 1] !== editorCode) {
+        undoStackRef.current.push(editorCode)
+        if (undoStackRef.current.length > 100) undoStackRef.current.shift()
+        setCanUndo(true)
+      }
+      if (historyTimeoutRef.current) {
+        clearTimeout(historyTimeoutRef.current)
+        historyTimeoutRef.current = null
+      }
+    } else {
+      if (historyTimeoutRef.current) {
+        clearTimeout(historyTimeoutRef.current)
+      }
+      const prevCode = editorCode
+      historyTimeoutRef.current = setTimeout(() => {
+        if (undoStackRef.current[undoStackRef.current.length - 1] !== prevCode) {
+          undoStackRef.current.push(prevCode)
+          if (undoStackRef.current.length > 100) undoStackRef.current.shift()
+          setCanUndo(true)
+        }
+        historyTimeoutRef.current = null
+      }, 800)
+    }
+  }
+
+  const handleUndo = () => {
+    if (undoStackRef.current.length === 0) return
+    
+    if (historyTimeoutRef.current) {
+      clearTimeout(historyTimeoutRef.current)
+      historyTimeoutRef.current = null
+    }
+
+    const currentVal = editorCode
+    const prevVal = undoStackRef.current.pop()!
+    
+    redoStackRef.current.push(currentVal)
+    setEditorCode(prevVal)
+    updateCanUndoRedo()
+  }
+
+  const handleRedo = () => {
+    if (redoStackRef.current.length === 0) return
+
+    const currentVal = editorCode
+    const nextVal = redoStackRef.current.pop()!
+
+    undoStackRef.current.push(currentVal)
+    setEditorCode(nextVal)
+    updateCanUndoRedo()
+  }
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
@@ -264,12 +450,31 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
     setConsoleOutput('')
     setRunSuccess(null)
     setConsoleTab('input')
+    // Clear history stacks
+    undoStackRef.current = []
+    redoStackRef.current = []
+    setCanUndo(false)
+    setCanRedo(false)
+    if (historyTimeoutRef.current) {
+      clearTimeout(historyTimeoutRef.current)
+      historyTimeoutRef.current = null
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active.id, initialCode])
 
   // Handle Save
   function handleSaveLocal() {
-    onSave(editorCode)
+    const fullSerializedCode = serializeCodeNotes(editorCode, patternNotes, approachNotes, complexityNotes, pitfallsNotes)
+    onSave(fullSerializedCode)
+    if (active.isCustom && onUpdateMetadata) {
+      onUpdateMetadata({
+        name: customTitle,
+        difficulty: customDifficulty,
+        link: customLink,
+        platform: customPlatform,
+        leetcodeNumber: customLeetCodeNumber
+      })
+    }
     setIsSaved(true)
     setTimeout(() => setIsSaved(false), 2000)
   }
@@ -317,15 +522,31 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
     }
   }
 
-  // Intercept key down inside the editor for tabs and cmd+s saving
+  // Intercept key down inside the editor for tabs, undo/redo, and cmd+s saving
   function handleKeyDownLocal(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault()
+      if (e.shiftKey) {
+        handleRedo()
+      } else {
+        handleUndo()
+      }
+      return
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault()
+      handleRedo()
+      return
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault()
       const start = e.currentTarget.selectionStart
       const end = e.currentTarget.selectionEnd
       const val = e.currentTarget.value
       const newVal = val.substring(0, start) + '    ' + val.substring(end)
-      setEditorCode(newVal)
+      handleCodeChange(newVal, true)
       
       setTimeout(() => {
         if (textareaRef.current) {
@@ -353,7 +574,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
           const rem = len % 4
           const deleteCount = rem === 0 ? 4 : rem
           const newVal = val.substring(0, start - deleteCount) + val.substring(end)
-          setEditorCode(newVal)
+          handleCodeChange(newVal, true)
           
           setTimeout(() => {
             if (textareaRef.current) {
@@ -398,7 +619,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       }
 
       const newVal = val.substring(0, start) + insertion + val.substring(end)
-      setEditorCode(newVal)
+      handleCodeChange(newVal, true)
 
       // Reset selection position after rendering
       setTimeout(() => {
@@ -428,7 +649,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       const closingChar = autoPairs[e.key]
       
       const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
-      setEditorCode(newVal)
+      handleCodeChange(newVal, true)
       
       setTimeout(() => {
         if (textareaRef.current) {
@@ -507,94 +728,364 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
   }
 
   return (
-    <div style={{
-      position: 'sticky',
-      top: 'calc(var(--header-h) + 12px)',
+    <div className="main-compiler-sticky-wrap" style={{
       borderRadius: 16,
-      border: '1px solid var(--border)',
+      border: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
       background: 'var(--surface)',
       boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      flex: 1,
+      minHeight: 0,
+      overflow: 'hidden'
     }}>
       {/* Panel Header */}
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: `linear-gradient(135deg, ${phaseColor}18, transparent)`, flexShrink: 0 }}>
+      <div style={{ padding: '5px 12px', borderBottom: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)', background: `linear-gradient(135deg, ${phaseColor}18, transparent)`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text)', marginBottom: 4, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{active.name}</div>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {active.isCustom ? (
+              <input
+                type="text"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                placeholder="Blank Custom Question"
+                style={{
+                  fontSize: 13,
+                  fontWeight: 900,
+                  color: 'var(--text)',
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  width: '180px',
+                  padding: '1px 3px',
+                  borderRadius: 4,
+                  borderBottom: '1px dashed var(--text-4)',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px', lineHeight: 1.2 }}>{active.name}</div>
+            )}
+            
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: DIFF_COLORS[active.difficulty], background: DIFF_COLORS[active.difficulty] + '20', padding: '2px 6px', borderRadius: 4 }}>
-                {DIFF_LABELS[active.difficulty]}
+              <span
+                onClick={() => {
+                  if (active.isCustom) {
+                    setCustomDifficulty(prev => prev === 2 ? 3 : (prev === 3 ? 4 : 2))
+                  }
+                }}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: DIFF_COLORS[customDifficulty],
+                  background: DIFF_COLORS[customDifficulty] + '20',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  flexShrink: 0,
+                  cursor: active.isCustom ? 'pointer' : 'default'
+                }}
+                title={active.isCustom ? "Click to toggle difficulty" : undefined}
+              >
+                {DIFF_LABELS[customDifficulty]}
               </span>
               <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
               <span style={{ fontSize: 11, color: 'var(--text-4)' }}>{active.subtopic}</span>
               
-              {/* Practice Links merged inline */}
-              <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
-              <Link href={`/dsa/${topicSlug}/revision`} style={{
-                fontSize: 11, fontWeight: 700, color: phaseColor, textDecoration: 'none', transition: 'opacity 0.15s'
-              }} onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
-                📖 Revision Sheet
-              </Link>
-              {activeLinks.lc && (
+              {/* LeetCode Auto-Fetch Loader/Input */}
+              {active.isCustom && (
                 <>
                   <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
-                  <a href={activeLinks.lc} target="_blank" rel="noopener noreferrer" style={{
-                    fontSize: 11, fontWeight: 700, color: '#ffa116', textDecoration: 'none', transition: 'opacity 0.15s'
-                  }} onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
-                    LeetCode
-                  </a>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
+                    <input
+                      type="text"
+                      value={lcFetchNumber}
+                      onChange={(e) => setLcFetchNumber(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleFetchLeetCode()
+                      }}
+                      placeholder="Fetch LC #"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: 'var(--surface-2)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        padding: '2px 6px',
+                        width: '75px',
+                        color: 'var(--text)',
+                        outline: 'none',
+                        height: '22px',
+                        boxSizing: 'border-box'
+                      }}
+                      disabled={isFetchingLc}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleFetchLeetCode}
+                      style={{
+                        fontSize: 11,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: isFetchingLc ? 'var(--text-4)' : phaseColor,
+                        fontWeight: 800,
+                        padding: '2px 4px'
+                      }}
+                      disabled={isFetchingLc}
+                    >
+                      {isFetchingLc ? '...' : 'Fetch'}
+                    </button>
+                    {fetchError && (
+                      <span style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        fontSize: 9,
+                        color: '#ef4444',
+                        whiteSpace: 'nowrap',
+                        background: 'var(--surface)',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        border: '1px solid rgba(239,68,68,0.25)',
+                        zIndex: 10
+                      }}>
+                        {fetchError}
+                      </span>
+                    )}
+                  </div>
                 </>
               )}
-              {activeLinks.gfg && (
+
+              {/* Practice Links merged inline */}
+              {!active.isCustom ? (
                 <>
                   <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
-                  <a href={activeLinks.gfg} target="_blank" rel="noopener noreferrer" style={{
-                    fontSize: 11, fontWeight: 700, color: '#298e46', textDecoration: 'none', transition: 'opacity 0.15s'
+                  <Link href={`/dsa/${topicSlug}/revision`} style={{
+                    fontSize: 11, fontWeight: 700, color: phaseColor, textDecoration: 'none', transition: 'opacity 0.15s'
                   }} onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
-                    GFG Practice
-                  </a>
+                    📖 Revision Sheet
+                  </Link>
+                  {activeLinks.lc && (
+                    <>
+                      <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
+                      <a href={activeLinks.lc} target="_blank" rel="noopener noreferrer" style={{
+                        fontSize: 11, fontWeight: 700, color: '#ffa116', textDecoration: 'none', transition: 'opacity 0.15s'
+                      }} onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
+                        LeetCode
+                      </a>
+                    </>
+                  )}
+                  {activeLinks.gfg && (
+                    <>
+                      <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
+                      <a href={activeLinks.gfg} target="_blank" rel="noopener noreferrer" style={{
+                        fontSize: 11, fontWeight: 700, color: '#298e46', textDecoration: 'none', transition: 'opacity 0.15s'
+                      }} onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
+                        GFG Practice
+                      </a>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {customLink ? (
+                    <>
+                      <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
+                      <a href={customLink} target="_blank" rel="noopener noreferrer" style={{
+                        fontSize: 11, fontWeight: 700, color: '#ffa116', textDecoration: 'none', transition: 'opacity 0.15s'
+                      }} onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}>
+                        LeetCode Link
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ color: 'var(--text-4)', fontSize: 11 }}>·</span>
+                      <input
+                        type="text"
+                        placeholder="Paste link..."
+                        value={customLink}
+                        onChange={(e) => setCustomLink(e.target.value)}
+                        style={{
+                          fontSize: 11,
+                          background: 'transparent',
+                          border: 'none',
+                          outline: 'none',
+                          color: 'var(--text-3)',
+                          borderBottom: '1px dashed var(--text-4)',
+                          width: '90px',
+                          padding: '1px 2px'
+                        }}
+                      />
+                    </>
+                  )}
                 </>
               )}
             </div>
           </div>
           
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             {/* Focus Mode Button */}
             <button
               onClick={() => setIsFocusMode(!isFocusMode)}
               style={{
-                padding: '5px 12px', background: isFocusMode ? 'rgba(99,102,241,0.15)' : 'transparent',
+                padding: '3px 8px', background: isFocusMode ? 'rgba(99,102,241,0.15)' : 'transparent',
                 border: `1px solid ${isFocusMode ? 'var(--brand)' : 'var(--border)'}`,
-                borderRadius: 6, color: isFocusMode ? 'var(--brand-light)' : 'var(--text-3)',
-                fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                borderRadius: 5, color: isFocusMode ? 'var(--brand-light)' : 'var(--text-3)',
+                fontSize: 10.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                 transition: 'all 0.15s'
               }}
             >
               {isFocusMode ? '🗖 Focus Mode: ON' : '🗗 Focus Mode'}
             </button>
             
+            {active.isCustom && onDelete && (
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to delete this custom question? All your custom code for it will be lost.')) {
+                    onDelete()
+                  }
+                }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 5,
+                  padding: '3px 8px',
+                  cursor: 'pointer',
+                  color: '#ef4444',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: 'Inter, sans-serif',
+                  transition: 'all 0.15s'
+                }}
+              >
+                🗑️ Delete
+              </button>
+            )}
+            
             <button onClick={onClose} style={{
-              background: 'transparent', border: '1px solid var(--border)', borderRadius: 6,
-              padding: '5px 12px', cursor: 'pointer', color: 'var(--text-3)', fontSize: 12, fontFamily: 'Inter, sans-serif'
+              background: 'transparent', border: '1px solid var(--border)', borderRadius: 5,
+              padding: '3px 8px', cursor: 'pointer', color: 'var(--text-3)', fontSize: 11, fontFamily: 'Inter, sans-serif'
             }}>✕ Close</button>
           </div>
         </div>
       </div>
-      <div style={{ padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', gap: 16 }}>
+      
+      {/* Workspace Tab Bar */}
+      <div style={{
+        display: 'flex',
+        borderBottom: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
+        background: theme === 'light' ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)',
+        padding: '0 12px',
+        gap: 12,
+        flexShrink: 0
+      }}>
+        <button
+          type="button"
+          onClick={() => setWorkspaceTab('code')}
+          style={{
+            padding: '5px 2px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontSize: 11.5,
+            fontWeight: 800,
+            color: workspaceTab === 'code' ? phaseColor : 'var(--text-3)',
+            borderBottom: `2px solid ${workspaceTab === 'code' ? phaseColor : 'transparent'}`,
+            transition: 'all 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          💻 Editor
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkspaceTab('console')}
+          style={{
+            padding: '5px 2px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontSize: 11.5,
+            fontWeight: 800,
+            color: workspaceTab === 'console' ? phaseColor : 'var(--text-3)',
+            borderBottom: `2px solid ${workspaceTab === 'console' ? phaseColor : 'transparent'}`,
+            transition: 'all 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          ⚙️ Console & Run
+          {runSuccess !== null && (
+            <span style={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: runSuccess ? '#10b981' : '#ef4444',
+              display: 'inline-block',
+              marginLeft: 3
+            }} />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkspaceTab('approach')}
+          style={{
+            padding: '5px 2px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontSize: 11.5,
+            fontWeight: 800,
+            color: workspaceTab === 'approach' ? phaseColor : 'var(--text-3)',
+            borderBottom: `2px solid ${workspaceTab === 'approach' ? phaseColor : 'transparent'}`,
+            transition: 'all 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          📝 Approach
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkspaceTab('complexity')}
+          style={{
+            padding: '5px 2px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            fontSize: 11.5,
+            fontWeight: 800,
+            color: workspaceTab === 'complexity' ? phaseColor : 'var(--text-3)',
+            borderBottom: `2px solid ${workspaceTab === 'complexity' ? phaseColor : 'transparent'}`,
+            transition: 'all 0.15s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          ⚡ Complexity & Pitfalls
+        </button>
+      </div>
+
+      <div style={{ padding: '6px 12px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         
-        {/* Solution Editor Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        {workspaceTab === 'code' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           
           {/* Unified Editor Component */}
-          <div style={{
+          <div className="main-code-editor-wrap" style={{
             background: theme === 'light' ? '#ffffff' : '#0d1117',
             borderRadius: 12,
-            border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'rgba(255,255,255,0.08)'}`,
+            border: theme === 'light' ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.08)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            height: '680px',
+            flex: 1,
+            minHeight: 0,
             boxShadow: theme === 'light' ? '0 4px 20px rgba(0,0,0,0.04)' : '0 4px 20px rgba(0,0,0,0.5)',
             position: 'relative'
           }}>
@@ -604,7 +1095,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '8px 16px',
-              borderBottom: `1px solid ${theme === 'light' ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)'}`,
+              borderBottom: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
               background: theme === 'light' ? '#f8fafc' : '#090d13',
               flexShrink: 0
             }}>
@@ -619,12 +1110,20 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     if (!editorCode.trim() || currentBoilerplates.some(b => b.trim() === editorCode.trim())) {
                       setEditorCode(BOILERPLATES[nextLang] || '')
                     }
+                    undoStackRef.current = []
+                    redoStackRef.current = []
+                    setCanUndo(false)
+                    setCanRedo(false)
+                    if (historyTimeoutRef.current) {
+                      clearTimeout(historyTimeoutRef.current)
+                      historyTimeoutRef.current = null
+                    }
                   }}
                   style={{
                     padding: '4px 24px 4px 8px',
                     borderRadius: 6,
                     border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'rgba(255,255,255,0.15)'}`,
-                    background: theme === 'light' ? '#ffffff' : '#0d1117',
+                    backgroundColor: theme === 'light' ? '#ffffff' : '#0d1117',
                     color: theme === 'light' ? '#334155' : '#c9d1d9',
                     fontSize: 12,
                     fontWeight: 600,
@@ -736,7 +1235,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                       top: 'calc(100% + 6px)',
                       right: 0,
                       background: theme === 'light' ? '#ffffff' : '#1e2430',
-                      border: `1px solid ${theme === 'light' ? '#cbd5e1' : 'rgba(255,255,255,0.15)'}`,
+                      border: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: 8,
                       padding: 12,
                       width: 200,
@@ -774,6 +1273,44 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   )}
                 </div>
 
+                {/* Undo Button */}
+                <button
+                  onClick={handleUndo}
+                  onMouseEnter={handleIconMouseEnter}
+                  onMouseLeave={handleIconMouseLeave}
+                  disabled={!canUndo}
+                  title="Undo (Ctrl+Z / Cmd+Z)"
+                  style={{
+                    ...iconButtonStyle,
+                    opacity: canUndo ? 1 : 0.4,
+                    cursor: canUndo ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7v6h6" />
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                  </svg>
+                </button>
+
+                {/* Redo Button */}
+                <button
+                  onClick={handleRedo}
+                  onMouseEnter={handleIconMouseEnter}
+                  onMouseLeave={handleIconMouseLeave}
+                  disabled={!canRedo}
+                  title="Redo (Ctrl+Y / Cmd+Y)"
+                  style={{
+                    ...iconButtonStyle,
+                    opacity: canRedo ? 1 : 0.4,
+                    cursor: canRedo ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 7v6h-6" />
+                    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+                  </svg>
+                </button>
+
                 {/* Reset Code */}
                 <button
                   onClick={handleResetTemplate}
@@ -801,6 +1338,29 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   </svg>
                 </button>
 
+                {/* Run Button */}
+                <button
+                  onClick={() => {
+                    handleRunCodeLocal()
+                    setWorkspaceTab('console')
+                    setConsoleTab('output')
+                  }}
+                  disabled={isRunning}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700,
+                    padding: '4px 10px', borderRadius: 6,
+                    border: 'none',
+                    background: phaseColor,
+                    color: 'white',
+                    cursor: isRunning ? 'not-allowed' : 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    transition: 'all 0.15s',
+                    boxShadow: `0 2px 8px ${phaseColor}30`
+                  }}
+                >
+                  <span>{isRunning ? '⏳ Running' : '▶️ Run'}</span>
+                </button>
+
                 {/* Save Button */}
                 <button
                   onClick={handleSaveLocal}
@@ -823,14 +1383,15 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
             </div>
 
             {/* Editor Workspace (Gutter + Code Input container) */}
-            <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
+            <div className="main-code-editor-workspace" style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
               
               {/* Line Numbers Gutter */}
               <div
+                className="main-code-editor-gutter"
                 ref={gutterRef}
                 style={{
                   background: theme === 'light' ? '#ffffff' : '#090d13',
-                  borderRight: `1px solid ${theme === 'light' ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)'}`,
+                  borderRight: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
                   padding: '16px 8px 16px 12px', userSelect: 'none', textAlign: 'right',
                   fontFamily: 'JetBrains Mono, monospace', fontSize: fontSize, lineHeight: 1.6,
                   color: theme === 'light' ? '#94a3b8' : '#484f58',
@@ -856,9 +1417,9 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   )
                 })}
               </div>
-
+ 
               {/* Editor Overlay Container */}
-              <div style={{
+              <div className="main-code-editor-overlay" style={{
                 position: 'relative',
                 flex: 1,
                 height: '100%',
@@ -889,9 +1450,10 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     }}
                   />
                 </div>
-
+ 
                 {/* Highlighted Code (Behind Textarea) */}
                 <pre
+                  className="main-code-editor-pre"
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -1056,11 +1618,11 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   }}
                 />
 
-                {/* Input Area (Textarea - Transparent on top) */}
                 <textarea
+                  className="main-code-editor-textarea"
                   ref={textareaRef}
                   value={editorCode}
-                  onChange={e => setEditorCode(e.target.value)}
+                  onChange={e => handleCodeChange(e.target.value)}
                   onKeyDown={handleKeyDownLocal}
                   onSelect={handleSelect}
                   onClick={handleSelect}
@@ -1094,60 +1656,61 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                 />
               </div>
             </div>
-          </div>
-
-          {/* Status footer info */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: 11, color: 'var(--text-4)', flexShrink: 0 }}>
-            <span>Lines: {lineCount}</span>
-            <span>Database: Neon PostgreSQL (production)</span>
+            {/* Status footer info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: 11, color: 'var(--text-4)', flexShrink: 0 }}>
+              <span>Lines: {lineCount}</span>
+              <span>Database: Neon PostgreSQL (production)</span>
+            </div>
           </div>
         </div>
-
-        {/* C++ Code Runner (Placed Vertically Below - Collapsible) */}
-        {showRunner && (
-          <div style={{ flexDirection: 'column', display: 'flex', flexShrink: 0, height: '140px', gap: 6 }}>
+      ) : workspaceTab === 'console' ? (
+          /* Console & Run Tab Content */
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 12 }}>
             
             {/* Console Tabs and Run Button */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button
+                  type="button"
                   onClick={() => setConsoleTab('input')}
                   style={{
-                    padding: '3px 8px', border: 'none', cursor: 'pointer',
-                    fontSize: 11.5, fontWeight: 700, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+                    padding: '6px 14px', border: 'none', cursor: 'pointer',
+                    fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
                     background: consoleTab === 'input' ? 'var(--surface-2)' : 'transparent',
                     color: consoleTab === 'input' ? phaseColor : 'var(--text-3)',
                     borderBottom: consoleTab === 'input' ? `2px solid ${phaseColor}` : '2px solid transparent',
-                    borderTopLeftRadius: 6, borderTopRightRadius: 6
+                    borderRadius: 6
                   }}
                 >
                   📥 Test Input
                 </button>
                 <button
+                  type="button"
                   onClick={() => setConsoleTab('output')}
                   style={{
-                    padding: '3px 8px', border: 'none', cursor: 'pointer',
-                    fontSize: 11.5, fontWeight: 700, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+                    padding: '6px 14px', border: 'none', cursor: 'pointer',
+                    fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
                     background: consoleTab === 'output' ? 'var(--surface-2)' : 'transparent',
                     color: consoleTab === 'output' ? (runSuccess === false ? '#ef4444' : (runSuccess === true ? '#10b981' : phaseColor)) : 'var(--text-3)',
                     borderBottom: consoleTab === 'output' ? `2px solid ${runSuccess === false ? '#ef4444' : (runSuccess === true ? '#10b981' : phaseColor)}` : '2px solid transparent',
-                    borderTopLeftRadius: 6, borderTopRightRadius: 6,
-                    display: 'flex', alignItems: 'center', gap: 4
+                    borderRadius: 6,
+                    display: 'flex', alignItems: 'center', gap: 6
                   }}
                 >
                   📤 Console Output
                   {runSuccess !== null && (
-                    <span style={{ fontSize: 7, color: runSuccess ? '#10b981' : '#ef4444' }}>●</span>
+                    <span style={{ fontSize: 8, color: runSuccess ? '#10b981' : '#ef4444' }}>●</span>
                   )}
                 </button>
               </div>
 
               <button
+                type="button"
                 onClick={handleRunCodeLocal}
                 disabled={isRunning}
                 style={{
-                  padding: '4px 12px', borderRadius: 6, cursor: isRunning ? 'not-allowed' : 'pointer',
-                  fontSize: 11.5, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+                  padding: '6px 16px', borderRadius: 8, cursor: isRunning ? 'not-allowed' : 'pointer',
+                  fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
                   background: isRunning ? 'var(--surface-2)' : phaseColor,
                   color: isRunning ? 'var(--text-4)' : 'white',
                   border: 'none',
@@ -1158,7 +1721,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
               </button>
             </div>
 
-            {/* Compact Console Tab Body */}
+            {/* Console Tab Body */}
             <div style={{ flex: 1, minHeight: 0 }}>
               {consoleTab === 'input' ? (
                 <textarea
@@ -1168,24 +1731,97 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   spellCheck={false}
                   style={{
                     width: '100%', height: '100%', background: 'var(--surface-2)',
-                    border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px',
-                    color: 'var(--text)', fontSize: 12.5, fontFamily: 'JetBrains Mono, monospace',
-                    outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.4
+                    border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
+                    color: 'var(--text)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
+                    outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.5
                   }}
                 />
               ) : (
                 <div style={{
                   width: '100%', height: '100%', background: 'var(--surface-2)',
-                  border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px 12px',
-                  color: runSuccess === false ? '#ef4444' : '#e6edf3', fontSize: 12.5,
+                  border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 16px',
+                  color: runSuccess === false ? '#ef4444' : '#e6edf3', fontSize: 13,
                   fontFamily: 'JetBrains Mono, monospace', overflowY: 'auto',
-                  whiteSpace: 'pre-wrap', boxSizing: 'border-box', lineHeight: 1.4
+                  whiteSpace: 'pre-wrap', boxSizing: 'border-box', lineHeight: 1.5
                 }}>
                   {consoleOutput || '// Output will appear here after compilation...'}
                 </div>
               )}
             </div>
 
+          </div>
+        ) : workspaceTab === 'approach' ? (
+          /* Approach Tab Content */
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+                Algorithmic Pattern
+              </label>
+              <input
+                type="text"
+                value={patternNotes}
+                onChange={e => setPatternNotes(e.target.value)}
+                placeholder="e.g. Union-Find, Sliding Window, Two Pointers, BFS..."
+                style={{
+                  width: '100%', background: 'var(--surface-2)',
+                  border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px',
+                  color: 'var(--text)', fontSize: 13, fontFamily: 'Inter, sans-serif',
+                  outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '200px' }}>
+              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+                Solution Idea & Approach
+              </label>
+              <textarea
+                value={approachNotes}
+                onChange={e => setApproachNotes(e.target.value)}
+                placeholder="Describe the solution intuition, walkthrough step-by-step logic, and design details here..."
+                style={{
+                  width: '100%', flex: 1, background: 'var(--surface-2)',
+                  border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
+                  color: 'var(--text)', fontSize: 13.5, fontFamily: 'Inter, sans-serif',
+                  outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          /* Complexity & Pitfalls Tab Content */
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+                Complexity Analysis
+              </label>
+              <textarea
+                value={complexityNotes}
+                onChange={e => setComplexityNotes(e.target.value)}
+                placeholder="e.g.&#10;Time: O(N log N)&#10;Space: O(N)"
+                style={{
+                  width: '100%', height: '80px', background: 'var(--surface-2)',
+                  border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px',
+                  color: 'var(--text)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
+                  outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.5
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '180px' }}>
+              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+                Common Pitfalls & Edge Cases
+              </label>
+              <textarea
+                value={pitfallsNotes}
+                onChange={e => setPitfallsNotes(e.target.value)}
+                placeholder="List potential bugs, boundary traps, index mistakes, or special edge cases to watch out for..."
+                style={{
+                  width: '100%', flex: 1, background: 'var(--surface-2)',
+                  border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
+                  color: 'var(--text)', fontSize: 13.5, fontFamily: 'Inter, sans-serif',
+                  outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -1197,6 +1833,30 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const currentTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' | null
+    if (currentTheme) {
+      setTheme(currentTheme)
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          const nextTheme = document.documentElement.getAttribute('data-theme') as 'light' | 'dark' | null
+          if (nextTheme) {
+            setTheme(nextTheme)
+          }
+        }
+      })
+    })
+
+    observer.observe(document.documentElement, { attributes: true })
+    return () => observer.disconnect()
+  }, [])
 
   const qParam = searchParams.get('q')
   const activeQ = qParam ? parseInt(qParam, 10) : null
@@ -1226,7 +1886,18 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
     }
   }
   
-  const { solved, revisit, userCodes, toggle, toggleRevisit, saveCode } = useProgress()
+  const { solved, revisit, userCodes, toggle, toggleRevisit, saveCode, customQuestions, saveCustomQuestions, updateCustomQuestion } = useProgress()
+
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newQuestionName, setNewQuestionName] = useState('')
+  const [newQuestionSubtopic, setNewQuestionSubtopic] = useState('')
+  const [isCustomSubtopic, setIsCustomSubtopic] = useState(false)
+  const [customSubtopicText, setCustomSubtopicText] = useState('')
+  const [newQuestionDifficulty, setNewQuestionDifficulty] = useState<number>(3)
+  const [newQuestionLink, setNewQuestionLink] = useState('')
+  const [newQuestionImportance, setNewQuestionImportance] = useState<'Crucial' | 'High' | 'Medium' | 'Low'>('Medium')
+  const [newQuestionCompany, setNewQuestionCompany] = useState('')
+  const [newQuestionPlatform, setNewQuestionPlatform] = useState<'LC' | 'GFG' | 'SPOJ' | 'CN' | 'Custom'>('LC')
 
   const handleCopy = (text: string, e: React.MouseEvent<HTMLButtonElement>) => {
     navigator.clipboard.writeText(text)
@@ -1240,11 +1911,74 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
     }, 2000)
   }
 
-  const subtopics = [...new Set(topic.questions.map(q => q.subtopic))]
-  
+  const allQuestions = useMemo(() => {
+    const topicCustomQuestions = customQuestions.filter(q => q.topicSlug === topic.slug)
+    return [...topic.questions, ...topicCustomQuestions]
+  }, [topic.questions, customQuestions])
+
+  const subtopics = useMemo(() => {
+    return [...new Set(allQuestions.map(q => q.subtopic))]
+  }, [allQuestions])
+
+  useEffect(() => {
+    if (subtopics.length > 0 && !newQuestionSubtopic) {
+      setNewQuestionSubtopic(subtopics[0])
+    }
+  }, [subtopics, newQuestionSubtopic])
+
+  const handleDeleteQuestion = (id: number) => {
+    const updated = customQuestions.filter((q: any) => q.id !== id)
+    saveCustomQuestions(updated)
+    handleSelectQuestion(null)
+  }
+
+  const handleAddQuestionSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newQuestionName.trim()) return alert('Please enter a question name')
+    
+    const finalSubtopic = isCustomSubtopic ? customSubtopicText.trim() : newQuestionSubtopic
+    if (!finalSubtopic) return alert('Please enter or select a subtopic')
+    
+    const maxId = customQuestions.reduce((max: number, q: any) => Math.max(max, q.id), 99999)
+    const newId = maxId + 1
+    
+    const companiesList = newQuestionCompany
+      .split(',')
+      .map(c => c.trim())
+      .filter(c => c.length > 0)
+    
+    const newQ = {
+      id: newId,
+      topicSlug: topic.slug,
+      subtopic: finalSubtopic,
+      name: newQuestionName.trim(),
+      difficulty: newQuestionDifficulty,
+      link: newQuestionLink.trim() || undefined,
+      isCustom: true,
+      companies: companiesList.length > 0 ? companiesList : ['Custom'],
+      importance: newQuestionImportance,
+      frequency: newQuestionImportance === 'Crucial' ? 90 : (newQuestionImportance === 'High' ? 70 : (newQuestionImportance === 'Medium' ? 50 : 30)),
+      acRate: 50.0,
+      platform: newQuestionPlatform,
+      leetcodeNumber: newQuestionPlatform === 'LC' ? 100 + (newId % 1000) : undefined
+    }
+    
+    const updatedList = [...customQuestions, newQ]
+    saveCustomQuestions(updatedList)
+    
+    setNewQuestionName('')
+    setIsCustomSubtopic(false)
+    setCustomSubtopicText('')
+    setNewQuestionLink('')
+    setNewQuestionCompany('')
+    setShowAddModal(false)
+    
+    handleSelectQuestion(newId)
+  }
+
   const enrichedQuestions = useMemo(() => {
-    return topic.questions.map(q => getEnrichedQuestion(q))
-  }, [topic.questions])
+    return allQuestions.map(q => getEnrichedQuestion(q))
+  }, [allQuestions])
 
   const filtered = useMemo(() => {
     let result = enrichedQuestions
@@ -1294,10 +2028,29 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
     return result
   }, [enrichedQuestions, filter, selectedCompany, selectedImportance, sortBy, sortField, sortDirection])
 
-  const active = activeQ !== null ? topic.questions.find(q => q.id === activeQ) : null
+  const active = activeQ !== null ? allQuestions.find(q => q.id === activeQ) : null
 
   return (
-    <div>
+    <div style={active ? { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' } : undefined}>
+      {active && (
+        <style>{`
+          .content-area {
+            height: calc(100vh - var(--header-h)) !important;
+            overflow: hidden !important;
+          }
+          .content-area > div {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 6px 12px 6px 12px !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+          }
+          .content-area > div > .no-print {
+            display: none !important;
+          }
+        `}</style>
+      )}
       <style>{`
         .freq-container {
           position: relative;
@@ -1392,7 +2145,16 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
 
       {/* Row with Study Mode Toggle (if not editing a question) */}
       {!active && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 16 }}>
+          <button onClick={() => setShowAddModal(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 8,
+            border: '1px solid var(--border)', cursor: 'pointer',
+            fontSize: 12.5, fontWeight: 800, transition: 'all 0.15s', fontFamily: 'Inter, sans-serif',
+            background: 'var(--surface)',
+            color: 'var(--text-2)'
+          }}>
+            <span>➕</span> Add Custom Question
+          </button>
           <button onClick={() => setStudyMode(!studyMode)} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 8,
             border: `1px solid ${studyMode ? 'var(--brand)' : 'var(--border)'}`, cursor: 'pointer',
@@ -1518,7 +2280,7 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
         /* ══════════════════════════════════════════════════════
            STANDARD SPLIT VIEW (Question list + Editor)
            ══════════════════════════════════════════════════════ */
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20, alignItems: 'start' }}>
+        <div style={active ? { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' } : { display: 'grid', gridTemplateColumns: '1fr', gap: 20, alignItems: 'start' }}>
 
           {/* ── Question List (LeetCode Style Table) ── */}
           {!active && (
@@ -1822,8 +2584,299 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
               setIsFocusMode={setIsFocusMode}
               onSave={(code) => saveCode(active.id, code)}
               onClose={() => handleSelectQuestion(null)}
+              onDelete={() => handleDeleteQuestion(active.id)}
+              onUpdateMetadata={(updates) => updateCustomQuestion(active.id, updates)}
             />
           )}
+        </div>
+      )}
+
+      {/* Add Custom Question Modal */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div style={{
+            background: theme === 'light' ? '#ffffff' : 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            width: '100%',
+            maxWidth: 520,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.3)',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: theme === 'light' ? '#f8fafc' : 'rgba(255, 255, 255, 0.01)'
+            }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>
+                ➕ Add Custom Question
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: 18,
+                  cursor: 'pointer',
+                  color: 'var(--text-4)'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAddQuestionSubmit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Question Name */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Question Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Find Triplets with Zero Sum"
+                  value={newQuestionName}
+                  onChange={e => setNewQuestionName(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                    color: 'var(--text)',
+                    fontSize: 13,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              {/* Subtopic */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Subtopic *</label>
+                
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <label style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={isCustomSubtopic}
+                      onChange={e => setIsCustomSubtopic(e.target.checked)}
+                    />
+                    Create Custom Subtopic
+                  </label>
+                </div>
+
+                {isCustomSubtopic ? (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter custom subtopic name"
+                    value={customSubtopicText}
+                    onChange={e => setCustomSubtopicText(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                      color: 'var(--text)',
+                      fontSize: 13,
+                      outline: 'none',
+                      marginTop: 4
+                    }}
+                  />
+                ) : (
+                  <select
+                    value={newQuestionSubtopic}
+                    onChange={e => setNewQuestionSubtopic(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                      color: 'var(--text)',
+                      fontSize: 13,
+                      outline: 'none',
+                      marginTop: 4
+                    }}
+                  >
+                    {subtopics.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Flex row for Difficulty & Importance */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Difficulty</label>
+                  <select
+                    value={newQuestionDifficulty}
+                    onChange={e => setNewQuestionDifficulty(parseInt(e.target.value, 10))}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                      color: 'var(--text)',
+                      fontSize: 13,
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="1">★☆☆☆☆ (Easy)</option>
+                    <option value="2">★★☆☆☆ (Easy)</option>
+                    <option value="3">★★★☆☆ (Medium)</option>
+                    <option value="4">★★★★☆ (Hard)</option>
+                    <option value="5">★★★★★ (Hard)</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Importance</label>
+                  <select
+                    value={newQuestionImportance}
+                    onChange={e => setNewQuestionImportance(e.target.value as any)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                      color: 'var(--text)',
+                      fontSize: 13,
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="Crucial">Crucial</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Flex row for Platform & Link */}
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Platform</label>
+                  <select
+                    value={newQuestionPlatform}
+                    onChange={e => setNewQuestionPlatform(e.target.value as any)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                      color: 'var(--text)',
+                      fontSize: 13,
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="LC">LeetCode</option>
+                    <option value="GFG">GeeksforGeeks</option>
+                    <option value="SPOJ">SPOJ</option>
+                    <option value="CN">Coding Ninjas</option>
+                    <option value="Custom">Custom</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Link (Optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://leetcode.com/problems/..."
+                    value={newQuestionLink}
+                    onChange={e => setNewQuestionLink(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                      color: 'var(--text)',
+                      fontSize: 13,
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Companies */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Target Companies (Optional, comma-separated)</label>
+                <input
+                  type="text"
+                  placeholder="Google, Amazon, Meta"
+                  value={newQuestionCompany}
+                  onChange={e => setNewQuestionCompany(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    background: theme === 'light' ? '#ffffff' : 'var(--surface-2)',
+                    color: 'var(--text)',
+                    fontSize: 13,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 10,
+                marginTop: 10,
+                borderTop: '1px solid var(--border)',
+                paddingTop: 16
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    background: 'transparent',
+                    color: 'var(--text-3)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: 'var(--brand)',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add Question
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
