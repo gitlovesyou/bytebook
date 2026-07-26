@@ -828,7 +828,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
 
   const lineCount = editorCode.split('\n').length
   const lineHeightPx = Math.round(fontSize * 1.6)
-  const editorFontFamily = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+  const editorFontFamily = '"Fira Code", "Cascadia Code", "JetBrains Mono", Consolas, Monaco, "Courier New", monospace'
   const activeLinks = PROBLEM_LINKS[active.name] || {}
 
   const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
@@ -1539,9 +1539,9 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     fontFamily: editorFontFamily,
                     fontSize: `${fontSize}px`,
                     lineHeight: `${lineHeightPx}px`,
-                    color: theme === 'light' ? '#64748b' : '#485263',
-                    borderRight: theme === 'light' ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.06)',
-                    background: theme === 'light' ? '#f8fafc' : '#080c14',
+                    color: theme === 'light' ? '#707070' : '#485263',
+                    borderRight: theme === 'light' ? '1px solid #e9ecef' : '1px solid rgba(255,255,255,0.06)',
+                    background: theme === 'light' ? '#f8f9fa' : '#080c14',
                     textAlign: 'right',
                     userSelect: 'none',
                     overflowY: 'hidden',
@@ -1558,8 +1558,8 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                           height: `${lineHeightPx}px`,
                           lineHeight: `${lineHeightPx}px`,
                           color: isCurrent
-                            ? (theme === 'light' ? '#4338ca' : '#ffffff')
-                            : (theme === 'light' ? '#64748b' : '#485263'),
+                            ? (theme === 'light' ? '#2f9e44' : '#ffffff')
+                            : (theme === 'light' ? '#707070' : '#485263'),
                           fontWeight: isCurrent ? 800 : 500,
                           fontSize: '12px',
                           transition: 'color 0.15s'
@@ -1597,8 +1597,8 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                         right: 0,
                         height: `${lineHeightPx}px`,
                         top: 16 + (activeLine - 1) * lineHeightPx,
-                        background: theme === 'light' ? 'rgba(99, 102, 241, 0.07)' : 'rgba(255, 255, 255, 0.04)',
-                        borderLeft: theme === 'light' ? '3px solid #4338ca' : '3px solid #818cf8',
+                        background: theme === 'light' ? 'rgba(47, 158, 68, 0.07)' : 'rgba(255, 255, 255, 0.04)',
+                        borderLeft: theme === 'light' ? '3px solid #2f9e44' : '3px solid #818cf8',
                         transition: 'top 0.08s ease-out',
                         zIndex: 0
                       }}
@@ -1621,7 +1621,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                       fontWeight: 500,
                       lineHeight: `${lineHeightPx}px`,
                       letterSpacing: '0px',
-                      color: theme === 'light' ? '#111827' : '#c9d1d9',
+                      color: theme === 'light' ? '#000000' : '#c9d1d9',
                       whiteSpace: 'pre',
                       wordBreak: 'normal',
                       wordWrap: 'normal',
@@ -1661,14 +1661,14 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                         }
 
                         const syntaxColors = theme === 'light' ? {
-                          comments: '#1a7f37',
-                          strings: '#0a3069',
-                          preproc: '#cf222e',
-                          keywords: '#cf222e',
-                          customTypes: '#111827',
-                          numbers: '#0550ae',
-                          funcs: '#8250df',
-                          types: '#0550ae'
+                          comments: '#008000',
+                          strings: '#a31515',
+                          preproc: '#008080',
+                          keywords: '#0000ff',
+                          customTypes: '#000000',
+                          numbers: '#098658',
+                          funcs: '#795e26',
+                          types: '#2b91af'
                         } : {
                           comments: '#8b949e',
                           strings: '#a5d6ff',
@@ -1722,7 +1722,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                             const wordIndex = tm.index + 4
                             const color = /^(int|char|bool|float|double|void)$/.test(word)
                               ? syntaxColors.keywords
-                              : (theme === 'light' ? '#111827' : '#d2a6ff')
+                              : (theme === 'light' ? '#000000' : '#d2a6ff')
                             tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
                           }
 
@@ -1732,7 +1732,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                           while ((sc = structClass.exec(escaped)) !== null) {
                             const word = sc[2]
                             const wordIndex = sc.index + sc[1].length + 1
-                            tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#111827' : '#d2a6ff', content: word })
+                            tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#000000' : '#d2a6ff', content: word })
                           }
 
                           addTokens(COMMENTS, syntaxColors.comments)

@@ -471,14 +471,14 @@ export function EditableCodeBlock({
     }
 
     const syntaxColors = theme === 'light' ? {
-      comments: '#1a7f37',
-      strings: '#0a3069',
-      preproc: '#cf222e',
-      keywords: '#cf222e',
-      customTypes: '#111827',
-      numbers: '#0550ae',
-      funcs: '#8250df',
-      types: '#0550ae'
+      comments: '#008000',
+      strings: '#a31515',
+      preproc: '#008080',
+      keywords: '#0000ff',
+      customTypes: '#000000',
+      numbers: '#098658',
+      funcs: '#795e26',
+      types: '#2b91af'
     } : {
       comments: '#8b949e',
       strings: '#a5d6ff',
@@ -628,7 +628,7 @@ export function EditableCodeBlock({
             style={{
               width: '100%',
               minHeight: '130px',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: '"Fira Code", "Cascadia Code", "JetBrains Mono", Consolas, Monaco, "Courier New", monospace',
               fontSize: '12.5px',
               lineHeight: '1.5',
               background: theme === 'light' ? '#ffffff' : '#0d1117',
@@ -790,7 +790,7 @@ export function EditableCodeBlock({
           <pre className="code-block-pre" style={{
             margin: 0,
             padding: '12px 16px',
-            fontFamily: 'JetBrains Mono, monospace',
+            fontFamily: '"Fira Code", "Cascadia Code", "JetBrains Mono", Consolas, Monaco, "Courier New", monospace',
             fontSize: 12.5,
             lineHeight: 1.6,
             overflowX: 'auto',
