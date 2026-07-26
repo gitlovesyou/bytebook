@@ -760,20 +760,24 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                           fontWeight: 800,
                                           color: isCustom
                                             ? (isSubActive ? 'var(--text)' : 'var(--text-3)')
-                                            : (child.platform === 'LC' ? '#f39c12' : (child.platform === 'GFG' ? '#2ecc71' : 'var(--brand)')),
-                                          background: isCustom
-                                            ? (theme === 'light' ? '#cbd5e1' : '#161b22')
                                             : (child.platform === 'LC'
-                                                ? (theme === 'light' ? '#fff9db' : '#2c1e00')
+                                                ? (theme === 'light' ? '#c2410c' : '#f39c12')
                                                 : (child.platform === 'GFG'
-                                                    ? (theme === 'light' ? '#ebfbee' : '#072b0c')
+                                                    ? (theme === 'light' ? '#15803d' : '#2ecc71')
+                                                    : 'var(--brand)')),
+                                          background: isCustom
+                                            ? (theme === 'light' ? '#e2e8f0' : '#161b22')
+                                            : (child.platform === 'LC'
+                                                ? (theme === 'light' ? '#ffedd5' : '#2c1e00')
+                                                : (child.platform === 'GFG'
+                                                    ? (theme === 'light' ? '#dcfce7' : '#072b0c')
                                                     : 'var(--brand-dim)')),
                                           border: isCustom
-                                            ? (theme === 'light' ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.12)')
+                                            ? (theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(255,255,255,0.12)')
                                             : (child.platform === 'LC'
-                                                ? '1px solid rgba(243, 156, 18, 0.4)'
+                                                ? (theme === 'light' ? '1px solid #fdba74' : '1px solid rgba(243, 156, 18, 0.4)')
                                                 : (child.platform === 'GFG'
-                                                    ? '1px solid rgba(46, 204, 113, 0.4)'
+                                                    ? (theme === 'light' ? '1px solid #86efac' : '1px solid rgba(46, 204, 113, 0.4)')
                                                     : '1px solid var(--brand-glow)')),
                                           borderRadius: 20,
                                           padding: '2px 6px',
@@ -789,24 +793,24 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                         }}
                                         onMouseEnter={(e) => {
                                           if (isCustom) {
-                                            e.currentTarget.style.background = theme === 'light' ? '#b8c5d6' : '#21262d';
+                                            e.currentTarget.style.background = theme === 'light' ? '#cbd5e1' : '#21262d';
                                           } else {
                                             e.currentTarget.style.background = child.platform === 'LC'
-                                              ? (theme === 'light' ? '#ffe8cc' : '#3d2b00')
+                                              ? (theme === 'light' ? '#fed7aa' : '#3d2b00')
                                               : (child.platform === 'GFG'
-                                                  ? (theme === 'light' ? '#d3f9d8' : '#0f3d13')
+                                                  ? (theme === 'light' ? '#bbf7d0' : '#0f3d13')
                                                   : 'var(--brand-glow)');
                                           }
                                           e.currentTarget.style.transform = 'scale(1.03)';
                                         }}
                                         onMouseLeave={(e) => {
                                           if (isCustom) {
-                                            e.currentTarget.style.background = theme === 'light' ? '#cbd5e1' : '#161b22';
+                                            e.currentTarget.style.background = theme === 'light' ? '#e2e8f0' : '#161b22';
                                           } else {
                                             e.currentTarget.style.background = child.platform === 'LC'
-                                              ? (theme === 'light' ? '#fff9db' : '#2c1e00')
+                                              ? (theme === 'light' ? '#ffedd5' : '#2c1e00')
                                               : (child.platform === 'GFG'
-                                                  ? (theme === 'light' ? '#ebfbee' : '#072b0c')
+                                                  ? (theme === 'light' ? '#dcfce7' : '#072b0c')
                                                   : 'var(--brand-dim)');
                                           }
                                           e.currentTarget.style.transform = 'scale(1)';

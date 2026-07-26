@@ -440,7 +440,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
     return () => {
       ta.removeEventListener('scroll', syncScroll)
     }
-  }, [active.id]) // Rebind when active question changes
+  }, [active.id, workspaceTab]) // Rebind when active question or tab changes
 
   // Sync editor code when active question changes or lang changes
   useEffect(() => {
@@ -683,6 +683,8 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
   }
 
   const lineCount = editorCode.split('\n').length
+  const lineHeightPx = Math.round(fontSize * 1.6)
+  const editorFontFamily = '"JetBrains Mono", Consolas, Monaco, "Courier New", monospace'
   const activeLinks = PROBLEM_LINKS[active.name] || {}
 
   const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
@@ -1073,20 +1075,20 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
 
       <div style={{ padding: '6px 12px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         
-        {workspaceTab === 'code' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        {/* Editor Code Tab */}
+        <div style={{ display: workspaceTab === 'code' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           
           {/* Unified Editor Component */}
           <div className="main-code-editor-wrap" style={{
             background: theme === 'light' ? '#ffffff' : '#0d1117',
             borderRadius: 12,
-            border: theme === 'light' ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.08)',
+            border: theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(255,255,255,0.08)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
             minHeight: 0,
-            boxShadow: theme === 'light' ? '0 4px 20px rgba(0,0,0,0.04)' : '0 4px 20px rgba(0,0,0,0.5)',
+            boxShadow: theme === 'light' ? '0 4px 20px rgba(0,0,0,0.06)' : '0 4px 20px rgba(0,0,0,0.5)',
             position: 'relative'
           }}>
             {/* Topbar/Header inside the Editor */}
@@ -1095,7 +1097,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '8px 16px',
-              borderBottom: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
+              borderBottom: theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.08)',
               background: theme === 'light' ? '#f8fafc' : '#090d13',
               flexShrink: 0
             }}>
@@ -1391,11 +1393,18 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                 ref={gutterRef}
                 style={{
                   background: theme === 'light' ? '#ffffff' : '#090d13',
-                  borderRight: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
-                  padding: '16px 8px 16px 12px', userSelect: 'none', textAlign: 'right',
-                  fontFamily: 'JetBrains Mono, monospace', fontSize: fontSize, lineHeight: 1.6,
-                  color: theme === 'light' ? '#94a3b8' : '#484f58',
-                  minWidth: '46px', boxSizing: 'border-box', overflowY: 'hidden',
+                  borderRight: theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.08)',
+                  padding: '16px 12px 16px 8px',
+                  userSelect: 'none',
+                  textAlign: 'right',
+                  fontFamily: editorFontFamily,
+                  fontSize: `${fontSize}px`,
+                  lineHeight: `${lineHeightPx}px`,
+                  color: theme === 'light' ? '#475569' : '#484f58',
+                  minWidth: '56px',
+                  boxSizing: 'border-box',
+                  overflowY: 'hidden',
+                  whiteSpace: 'nowrap',
                   flexShrink: 0
                 }}
               >
@@ -1405,6 +1414,8 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     <div
                       key={i}
                       style={{
+                        height: `${lineHeightPx}px`,
+                        lineHeight: `${lineHeightPx}px`,
                         color: isCurrent
                           ? (theme === 'light' ? '#0f172a' : '#ffffff')
                           : undefined,
@@ -1417,7 +1428,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   )
                 })}
               </div>
- 
+
               {/* Editor Overlay Container */}
               <div className="main-code-editor-overlay" style={{
                 position: 'relative',
@@ -1442,15 +1453,15 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                       position: 'absolute',
                       left: 0,
                       right: 0,
-                      height: fontSize * 1.6,
-                      top: 16 + (activeLine - 1) * fontSize * 1.6,
+                      height: `${lineHeightPx}px`,
+                      top: 16 + (activeLine - 1) * lineHeightPx,
                       background: theme === 'light' ? '#f1f5f9' : 'rgba(255, 255, 255, 0.04)',
                       transition: 'top 0.08s ease-out',
                       zIndex: 0
                     }}
                   />
                 </div>
- 
+
                 {/* Highlighted Code (Behind Textarea) */}
                 <pre
                   className="main-code-editor-pre"
@@ -1462,15 +1473,21 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     height: '100%',
                     margin: 0,
                     padding: 16,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: fontSize,
-                    lineHeight: 1.6,
+                    fontFamily: editorFontFamily,
+                    fontSize: `${fontSize}px`,
+                    lineHeight: `${lineHeightPx}px`,
                     color: theme === 'light' ? '#24292e' : '#c9d1d9',
                     whiteSpace: 'pre',
-                    overflow: 'auto',
+                    wordBreak: 'normal',
+                    wordWrap: 'normal',
+                    overflowWrap: 'normal',
+                    overflow: 'hidden',
                     pointerEvents: 'none',
                     boxSizing: 'border-box',
                     background: 'transparent',
+                    tabSize: 4,
+                    WebkitFontSmoothing: 'antialiased',
+                    MozOsxFontSmoothing: 'grayscale',
                     zIndex: 1
                   }}
                   ref={preRef}
@@ -1498,14 +1515,14 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                       }
 
                       const syntaxColors = theme === 'light' ? {
-                        comments: '#3c8054',
-                        strings: '#0a3069',
-                        preproc: '#cf222e',
-                        keywords: '#0056b3',
-                        customTypes: '#24292e',
-                        numbers: '#0550ae',
-                        funcs: '#24292e',
-                        types: '#0056b3'
+                        comments: '#15803d',
+                        strings: '#0284c7',
+                        preproc: '#dc2626',
+                        keywords: '#4f46e5',
+                        customTypes: '#0f172a',
+                        numbers: '#d97706',
+                        funcs: '#6b21a8',
+                        types: '#1d4ed8'
                       } : {
                         comments: '#8b949e',
                         strings: '#a5d6ff',
@@ -1518,7 +1535,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                       }
 
                       const guideColor = theme === 'light' ? '#cbd5e1' : 'rgba(255, 255, 255, 0.12)'
-                      const guideStyle = `display: inline-block; width: 4ch; border-left: 1px dashed ${guideColor}; box-sizing: border-box; height: 1.6em; vertical-align: bottom;`
+                      const guideStyle = `display: inline-block; width: 4ch; border-left: 1px dashed ${guideColor}; box-sizing: border-box; height: ${lineHeightPx}px; vertical-align: top; margin: 0; padding: 0;`
 
                       const outputLines = lines.map((line, idx) => {
                         const rawLeading = (line.match(/^ */) || [''])[0].length
@@ -1613,7 +1630,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                         return guidesHtml + remainingSpaces + tokenizedText
                       })
 
-                      return outputLines.join('\n') + '\n\n'
+                      return outputLines.join('\n') + '\n'
                     })()
                   }}
                 />
@@ -1622,7 +1639,12 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                   className="main-code-editor-textarea"
                   ref={textareaRef}
                   value={editorCode}
-                  onChange={e => handleCodeChange(e.target.value)}
+                  onChange={e => {
+                    handleCodeChange(e.target.value)
+                    const selStart = e.target.selectionStart
+                    const newlines = e.target.value.substring(0, selStart).split('\n')
+                    setActiveLine(newlines.length)
+                  }}
                   onKeyDown={handleKeyDownLocal}
                   onSelect={handleSelect}
                   onClick={handleSelect}
@@ -1635,21 +1657,27 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
                     left: 0,
                     width: '100%',
                     height: '100%',
+                    margin: 0,
+                    padding: 16,
+                    fontFamily: editorFontFamily,
+                    fontSize: `${fontSize}px`,
+                    lineHeight: `${lineHeightPx}px`,
+                    color: 'transparent',
+                    caretColor: theme === 'light' ? '#000000' : '#ffffff',
                     background: 'transparent',
                     border: 'none',
                     outline: 'none',
-                    padding: 16,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    fontSize: fontSize,
-                    lineHeight: 1.6,
-                    color: 'transparent',
-                    caretColor: theme === 'light' ? '#000000' : '#ffffff',
                     resize: 'none',
                     tabSize: 4,
                     boxSizing: 'border-box',
-                    overflow: 'auto',
                     whiteSpace: 'pre',
+                    wordBreak: 'normal',
+                    wordWrap: 'normal',
+                    overflowWrap: 'normal',
+                    overflow: 'auto',
                     WebkitTextFillColor: 'transparent',
+                    WebkitFontSmoothing: 'antialiased',
+                    MozOsxFontSmoothing: 'grayscale',
                     display: 'block',
                     zIndex: 2
                   }}
@@ -1663,167 +1691,166 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
             </div>
           </div>
         </div>
-      ) : workspaceTab === 'console' ? (
-          /* Console & Run Tab Content */
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 12 }}>
-            
-            {/* Console Tabs and Run Button */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => setConsoleTab('input')}
-                  style={{
-                    padding: '6px 14px', border: 'none', cursor: 'pointer',
-                    fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
-                    background: consoleTab === 'input' ? 'var(--surface-2)' : 'transparent',
-                    color: consoleTab === 'input' ? phaseColor : 'var(--text-3)',
-                    borderBottom: consoleTab === 'input' ? `2px solid ${phaseColor}` : '2px solid transparent',
-                    borderRadius: 6
-                  }}
-                >
-                  📥 Test Input
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConsoleTab('output')}
-                  style={{
-                    padding: '6px 14px', border: 'none', cursor: 'pointer',
-                    fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
-                    background: consoleTab === 'output' ? 'var(--surface-2)' : 'transparent',
-                    color: consoleTab === 'output' ? (runSuccess === false ? '#ef4444' : (runSuccess === true ? '#10b981' : phaseColor)) : 'var(--text-3)',
-                    borderBottom: consoleTab === 'output' ? `2px solid ${runSuccess === false ? '#ef4444' : (runSuccess === true ? '#10b981' : phaseColor)}` : '2px solid transparent',
-                    borderRadius: 6,
-                    display: 'flex', alignItems: 'center', gap: 6
-                  }}
-                >
-                  📤 Console Output
-                  {runSuccess !== null && (
-                    <span style={{ fontSize: 8, color: runSuccess ? '#10b981' : '#ef4444' }}>●</span>
-                  )}
-                </button>
-              </div>
 
+        {/* Console & Run Tab Content */}
+        <div style={{ display: workspaceTab === 'console' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, gap: 12 }}>
+          
+          {/* Console Tabs and Run Button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button
                 type="button"
-                onClick={handleRunCodeLocal}
-                disabled={isRunning}
+                onClick={() => setConsoleTab('input')}
                 style={{
-                  padding: '6px 16px', borderRadius: 8, cursor: isRunning ? 'not-allowed' : 'pointer',
+                  padding: '6px 14px', border: 'none', cursor: 'pointer',
                   fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
-                  background: isRunning ? 'var(--surface-2)' : phaseColor,
-                  color: isRunning ? 'var(--text-4)' : 'white',
-                  border: 'none',
-                  boxShadow: `0 3px 10px ${phaseColor}20`
+                  background: consoleTab === 'input' ? 'var(--surface-2)' : 'transparent',
+                  color: consoleTab === 'input' ? phaseColor : 'var(--text-3)',
+                  borderBottom: consoleTab === 'input' ? `2px solid ${phaseColor}` : '2px solid transparent',
+                  borderRadius: 6
                 }}
               >
-                {isRunning ? 'Running...' : 'Compile & Run'}
+                📥 Test Input
+              </button>
+              <button
+                type="button"
+                onClick={() => setConsoleTab('output')}
+                style={{
+                  padding: '6px 14px', border: 'none', cursor: 'pointer',
+                  fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+                  background: consoleTab === 'output' ? 'var(--surface-2)' : 'transparent',
+                  color: consoleTab === 'output' ? (runSuccess === false ? '#ef4444' : (runSuccess === true ? '#10b981' : phaseColor)) : 'var(--text-3)',
+                  borderBottom: consoleTab === 'output' ? `2px solid ${runSuccess === false ? '#ef4444' : (runSuccess === true ? '#10b981' : phaseColor)}` : '2px solid transparent',
+                  borderRadius: 6,
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+              >
+                📤 Console Output
+                {runSuccess !== null && (
+                  <span style={{ fontSize: 8, color: runSuccess ? '#10b981' : '#ef4444' }}>●</span>
+                )}
               </button>
             </div>
 
-            {/* Console Tab Body */}
-            <div style={{ flex: 1, minHeight: 0 }}>
-              {consoleTab === 'input' ? (
-                <textarea
-                  value={stdin}
-                  onChange={e => setStdin(e.target.value)}
-                  placeholder="Enter input values here..."
-                  spellCheck={false}
-                  style={{
-                    width: '100%', height: '100%', background: 'var(--surface-2)',
-                    border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
-                    color: 'var(--text)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
-                    outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.5
-                  }}
-                />
-              ) : (
-                <div style={{
-                  width: '100%', height: '100%', background: 'var(--surface-2)',
-                  border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 16px',
-                  color: runSuccess === false ? '#ef4444' : '#e6edf3', fontSize: 13,
-                  fontFamily: 'JetBrains Mono, monospace', overflowY: 'auto',
-                  whiteSpace: 'pre-wrap', boxSizing: 'border-box', lineHeight: 1.5
-                }}>
-                  {consoleOutput || '// Output will appear here after compilation...'}
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={handleRunCodeLocal}
+              disabled={isRunning}
+              style={{
+                padding: '6px 16px', borderRadius: 8, cursor: isRunning ? 'not-allowed' : 'pointer',
+                fontSize: 12, fontWeight: 800, fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
+                background: isRunning ? 'var(--surface-2)' : phaseColor,
+                color: isRunning ? 'var(--text-4)' : 'white',
+                border: 'none',
+                boxShadow: `0 3px 10px ${phaseColor}20`
+              }}
+            >
+              {isRunning ? 'Running...' : 'Compile & Run'}
+            </button>
+          </div>
 
-          </div>
-        ) : workspaceTab === 'approach' ? (
-          /* Approach Tab Content */
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 14 }}>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
-                Algorithmic Pattern
-              </label>
-              <input
-                type="text"
-                value={patternNotes}
-                onChange={e => setPatternNotes(e.target.value)}
-                placeholder="e.g. Union-Find, Sliding Window, Two Pointers, BFS..."
-                style={{
-                  width: '100%', background: 'var(--surface-2)',
-                  border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px',
-                  color: 'var(--text)', fontSize: 13, fontFamily: 'Inter, sans-serif',
-                  outline: 'none', boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '200px' }}>
-              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
-                Solution Idea & Approach
-              </label>
+          {/* Console Tab Body */}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {consoleTab === 'input' ? (
               <textarea
-                value={approachNotes}
-                onChange={e => setApproachNotes(e.target.value)}
-                placeholder="Describe the solution intuition, walkthrough step-by-step logic, and design details here..."
+                value={stdin}
+                onChange={e => setStdin(e.target.value)}
+                placeholder="Enter input values here..."
+                spellCheck={false}
                 style={{
-                  width: '100%', flex: 1, background: 'var(--surface-2)',
+                  width: '100%', height: '100%', background: 'var(--surface-2)',
                   border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
-                  color: 'var(--text)', fontSize: 13.5, fontFamily: 'Inter, sans-serif',
-                  outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6
-                }}
-              />
-            </div>
-          </div>
-        ) : (
-          /* Complexity & Pitfalls Tab Content */
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 14 }}>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
-                Complexity Analysis
-              </label>
-              <textarea
-                value={complexityNotes}
-                onChange={e => setComplexityNotes(e.target.value)}
-                placeholder="e.g.&#10;Time: O(N log N)&#10;Space: O(N)"
-                style={{
-                  width: '100%', height: '80px', background: 'var(--surface-2)',
-                  border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px',
                   color: 'var(--text)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
                   outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.5
                 }}
               />
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '180px' }}>
-              <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
-                Common Pitfalls & Edge Cases
-              </label>
-              <textarea
-                value={pitfallsNotes}
-                onChange={e => setPitfallsNotes(e.target.value)}
-                placeholder="List potential bugs, boundary traps, index mistakes, or special edge cases to watch out for..."
-                style={{
-                  width: '100%', flex: 1, background: 'var(--surface-2)',
-                  border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
-                  color: 'var(--text)', fontSize: 13.5, fontFamily: 'Inter, sans-serif',
-                  outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6
-                }}
-              />
-            </div>
+            ) : (
+              <div style={{
+                width: '100%', height: '100%', background: 'var(--surface-2)',
+                border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 16px',
+                color: runSuccess === false ? '#ef4444' : '#e6edf3', fontSize: 13,
+                fontFamily: 'JetBrains Mono, monospace', overflowY: 'auto',
+                whiteSpace: 'pre-wrap', boxSizing: 'border-box', lineHeight: 1.5
+              }}>
+                {consoleOutput || '// Output will appear here after compilation...'}
+              </div>
+            )}
           </div>
-        )}
+
+        </div>
+
+        {/* Approach Tab Content */}
+        <div style={{ display: workspaceTab === 'approach' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+              Algorithmic Pattern
+            </label>
+            <input
+              type="text"
+              value={patternNotes}
+              onChange={e => setPatternNotes(e.target.value)}
+              placeholder="e.g. Union-Find, Sliding Window, Two Pointers, BFS..."
+              style={{
+                width: '100%', background: 'var(--surface-2)',
+                border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px',
+                color: 'var(--text)', fontSize: 13, fontFamily: 'Inter, sans-serif',
+                outline: 'none', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '200px' }}>
+            <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+              Solution Idea & Approach
+            </label>
+            <textarea
+              value={approachNotes}
+              onChange={e => setApproachNotes(e.target.value)}
+              placeholder="Describe the solution intuition, walkthrough step-by-step logic, and design details here..."
+              style={{
+                width: '100%', flex: 1, background: 'var(--surface-2)',
+                border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
+                color: 'var(--text)', fontSize: 13.5, fontFamily: 'Inter, sans-serif',
+                outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Complexity & Pitfalls Tab Content */}
+        <div style={{ display: workspaceTab === 'complexity' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+              Complexity Analysis
+            </label>
+            <textarea
+              value={complexityNotes}
+              onChange={e => setComplexityNotes(e.target.value)}
+              placeholder="e.g.&#10;Time: O(N log N)&#10;Space: O(N)"
+              style={{
+                width: '100%', height: '80px', background: 'var(--surface-2)',
+                border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px',
+                color: 'var(--text)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace',
+                outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.5
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '180px' }}>
+            <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
+              Common Pitfalls & Edge Cases
+            </label>
+            <textarea
+              value={pitfallsNotes}
+              onChange={e => setPitfallsNotes(e.target.value)}
+              placeholder="List potential bugs, boundary traps, index mistakes, or special edge cases to watch out for..."
+              style={{
+                width: '100%', flex: 1, background: 'var(--surface-2)',
+                border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px',
+                color: 'var(--text)', fontSize: 13.5, fontFamily: 'Inter, sans-serif',
+                outline: 'none', resize: 'none', boxSizing: 'border-box', lineHeight: 1.6
+              }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -174,7 +174,7 @@ export default function WorkspacePage() {
   const [leftTabs, setLeftTabs] = useState<number[]>([]) 
   const [leftActiveId, setLeftActiveId] = useState<number | null>(null)
   const [leftTabMode, setLeftTabMode] = useState<'code' | 'console'>('code')
-  const [leftShowInfo, setLeftShowInfo] = useState(true)
+  const [leftShowInfo, setLeftShowInfo] = useState(false)
 
   const [leftCode, setLeftCode] = useState('')
   const [leftPattern, setLeftPattern] = useState('')
@@ -192,7 +192,7 @@ export default function WorkspacePage() {
   const [rightTabs, setRightTabs] = useState<number[]>([])
   const [rightActiveId, setRightActiveId] = useState<number | null>(null)
   const [rightTabMode, setRightTabMode] = useState<'code' | 'console'>('code')
-  const [rightShowInfo, setRightShowInfo] = useState(true)
+  const [rightShowInfo, setRightShowInfo] = useState(false)
 
   const [rightCode, setRightCode] = useState('')
   const [rightPattern, setRightPattern] = useState('')
@@ -210,7 +210,7 @@ export default function WorkspacePage() {
   const [midTabs, setMidTabs] = useState<number[]>([])
   const [midActiveId, setMidActiveId] = useState<number | null>(null)
   const [midTabMode, setMidTabMode] = useState<'code' | 'console'>('code')
-  const [midShowInfo, setMidShowInfo] = useState(true)
+  const [midShowInfo, setMidShowInfo] = useState(false)
 
   const [midCode, setMidCode] = useState('')
   const [midPattern, setMidPattern] = useState('')
