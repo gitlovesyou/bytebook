@@ -542,19 +542,141 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
 
     if (e.key === 'Tab') {
       e.preventDefault()
-      const start = e.currentTarget.selectionStart
-      const end = e.currentTarget.selectionEnd
-      const val = e.currentTarget.value
-      const newVal = val.substring(0, start) + '    ' + val.substring(end)
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const val = textarea.value
+
+      let newVal = val
+      let newStart = start
+      let newEnd = end
+
+      if (e.shiftKey) {
+        // Outdent (Shift + Tab) - works for single cursor or multi-line selection
+        const effectiveEnd = (start < end && val.charAt(end - 1) === '\n') ? end - 1 : end
+        const firstLineStart = val.lastIndexOf('\n', start - 1) + 1
+        const nextNL = val.indexOf('\n', effectiveEnd)
+        const lastLineEnd = nextNL === -1 ? val.length : nextNL
+
+        const targetText = val.substring(firstLineStart, lastLineEnd)
+        const targetLines = targetText.split('\n')
+
+        let firstLineRemoved = 0
+        let totalRemoved = 0
+
+        const modifiedLines = targetLines.map((line, idx) => {
+          let spacesToRemove = 0
+          if (line.startsWith('\t')) {
+            spacesToRemove = 1
+          } else {
+            const match = line.match(/^ {1,4}/)
+            spacesToRemove = match ? match[0].length : 0
+          }
+          if (idx === 0) firstLineRemoved = spacesToRemove
+          totalRemoved += spacesToRemove
+          return line.substring(spacesToRemove)
+        })
+
+        const newBlock = modifiedLines.join('\n')
+        newVal = val.substring(0, firstLineStart) + newBlock + val.substring(lastLineEnd)
+        newStart = Math.max(firstLineStart, start - firstLineRemoved)
+        newEnd = Math.max(newStart, end - totalRemoved)
+      } else {
+        // Indent (Tab)
+        if (start === end) {
+          // Single cursor: insert 4 spaces
+          newVal = val.substring(0, start) + '    ' + val.substring(end)
+          newStart = start + 4
+          newEnd = start + 4
+        } else {
+          // Selection (single or multi-line): indent all selected lines
+          const effectiveEnd = (start < end && val.charAt(end - 1) === '\n') ? end - 1 : end
+          const firstLineStart = val.lastIndexOf('\n', start - 1) + 1
+          const nextNL = val.indexOf('\n', effectiveEnd)
+          const lastLineEnd = nextNL === -1 ? val.length : nextNL
+
+          const targetText = val.substring(firstLineStart, lastLineEnd)
+          const targetLines = targetText.split('\n')
+
+          const indentedLines = targetLines.map(line => '    ' + line)
+          const newBlock = indentedLines.join('\n')
+
+          newVal = val.substring(0, firstLineStart) + newBlock + val.substring(lastLineEnd)
+          newStart = start + 4
+          newEnd = end + (4 * targetLines.length)
+        }
+      }
+
       handleCodeChange(newVal, true)
-      
+
       setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 4
-          const newlines = newVal.substring(0, start + 4).split('\n')
+        const el = textareaRef.current || textarea
+        if (el) {
+          el.selectionStart = newStart
+          el.selectionEnd = newEnd
+          const newlines = newVal.substring(0, newStart).split('\n')
           setActiveLine(newlines.length)
         }
       }, 0)
+      return
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const val = textarea.value
+
+      const effectiveEnd = (start < end && val.charAt(end - 1) === '\n') ? end - 1 : end
+      const firstLineStart = val.lastIndexOf('\n', start - 1) + 1
+      const nextNL = val.indexOf('\n', effectiveEnd)
+      const lastLineEnd = nextNL === -1 ? val.length : nextNL
+
+      const targetText = val.substring(firstLineStart, lastLineEnd)
+      const targetLines = targetText.split('\n')
+
+      const nonEmptyLines = targetLines.filter(l => l.trim().length > 0)
+      const allCommented = nonEmptyLines.length > 0 && nonEmptyLines.every(l => l.trim().startsWith('//'))
+
+      let firstLineDelta = 0
+      let totalDelta = 0
+
+      const modifiedLines = targetLines.map((line, idx) => {
+        let newLine = line
+        let delta = 0
+        if (allCommented) {
+          newLine = line.replace(/(\s*)\/\/ ?/, '$1')
+          delta = newLine.length - line.length
+        } else {
+          const match = line.match(/^(\s*)/)
+          const indent = match ? match[1] : ''
+          const rest = line.substring(indent.length)
+          newLine = indent + '// ' + rest
+          delta = newLine.length - line.length
+        }
+        if (idx === 0) firstLineDelta = delta
+        totalDelta += delta
+        return newLine
+      })
+
+      const newBlock = modifiedLines.join('\n')
+      const newVal = val.substring(0, firstLineStart) + newBlock + val.substring(lastLineEnd)
+      const newStart = Math.max(firstLineStart, start + firstLineDelta)
+      const newEnd = Math.max(newStart, end + totalDelta)
+
+      handleCodeChange(newVal, true)
+
+      setTimeout(() => {
+        const el = textareaRef.current || textarea
+        if (el) {
+          el.selectionStart = newStart
+          el.selectionEnd = newEnd
+          const newlines = newVal.substring(0, newStart).split('\n')
+          setActiveLine(newlines.length)
+        }
+      }, 0)
+      return
     }
 
     if (e.key === 'Backspace') {
@@ -637,42 +759,64 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       '[': ']',
       '(': ')',
       '"': '"',
-      "'": "'"
+      "'": "'",
+      '`': '`'
     }
 
     if (autoPairs[e.key] !== undefined) {
-      e.preventDefault()
       const textarea = e.currentTarget
       const start = textarea.selectionStart
       const end = textarea.selectionEnd
       const val = textarea.value
       const closingChar = autoPairs[e.key]
-      
-      const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
-      handleCodeChange(newVal, true)
-      
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 1
-        }
-      }, 0)
-      return
-    }
 
-    // Step over closing brackets and quotes if typed
-    const closingChars = new Set(['}', ']', ')', '"', "'"])
-    if (closingChars.has(e.key)) {
-      const textarea = e.currentTarget
-      const start = textarea.selectionStart
-      const val = textarea.value
-      if (val.charAt(start) === e.key) {
+      if (start !== end) {
+        // Wrap selected text
         e.preventDefault()
+        const selected = val.substring(start, end)
+        const newVal = val.substring(0, start) + e.key + selected + closingChar + val.substring(end)
+        handleCodeChange(newVal, true)
+
+        setTimeout(() => {
+          const el = textareaRef.current || textarea
+          if (el) {
+            el.selectionStart = start + 1
+            el.selectionEnd = end + 1
+          }
+        }, 0)
+        return
+      } else {
+        // Auto-close single cursor
+        e.preventDefault()
+        const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
+        handleCodeChange(newVal, true)
+
         setTimeout(() => {
           if (textareaRef.current) {
             textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 1
           }
         }, 0)
         return
+      }
+    }
+
+    // Step over closing brackets and quotes if typed
+    const closingChars = new Set(['}', ']', ')', '"', "'", '`'])
+    if (closingChars.has(e.key)) {
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      if (start === end) {
+        const val = textarea.value
+        if (val.charAt(start) === e.key) {
+          e.preventDefault()
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.selectionStart = textareaRef.current.selectionEnd = start + 1
+            }
+          }, 0)
+          return
+        }
       }
     }
 
@@ -684,7 +828,7 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
 
   const lineCount = editorCode.split('\n').length
   const lineHeightPx = Math.round(fontSize * 1.6)
-  const editorFontFamily = '"JetBrains Mono", Consolas, Monaco, "Courier New", monospace'
+  const editorFontFamily = '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
   const activeLinks = PROBLEM_LINKS[active.name] || {}
 
   const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
@@ -1387,302 +1531,310 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
             {/* Editor Workspace (Gutter + Code Input container) */}
             <div className="main-code-editor-workspace" style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
               
-              {/* Line Numbers Gutter */}
+              {/* Gutter Line Numbers */}
               <div
-                className="main-code-editor-gutter"
                 ref={gutterRef}
-                style={{
-                  background: theme === 'light' ? '#ffffff' : '#090d13',
-                  borderRight: theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.08)',
-                  padding: '16px 12px 16px 8px',
-                  userSelect: 'none',
-                  textAlign: 'right',
-                  fontFamily: editorFontFamily,
-                  fontSize: `${fontSize}px`,
-                  lineHeight: `${lineHeightPx}px`,
-                  color: theme === 'light' ? '#475569' : '#484f58',
-                  minWidth: '56px',
-                  boxSizing: 'border-box',
-                  overflowY: 'hidden',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0
-                }}
-              >
-                {Array.from({ length: Math.max(lineCount, 12) }).map((_, i) => {
-                  const isCurrent = i + 1 === activeLine
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        height: `${lineHeightPx}px`,
-                        lineHeight: `${lineHeightPx}px`,
-                        color: isCurrent
-                          ? (theme === 'light' ? '#0f172a' : '#ffffff')
-                          : undefined,
-                        fontWeight: isCurrent ? 'bold' : 'normal',
-                        transition: 'color 0.15s'
-                      }}
-                    >
-                      {i + 1}
-                    </div>
-                  )
-                })}
-              </div>
+                  style={{
+                    padding: '16px 12px 16px 16px',
+                    fontFamily: editorFontFamily,
+                    fontSize: `${fontSize}px`,
+                    lineHeight: `${lineHeightPx}px`,
+                    color: theme === 'light' ? '#64748b' : '#485263',
+                    borderRight: theme === 'light' ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.06)',
+                    background: theme === 'light' ? '#f8fafc' : '#080c14',
+                    textAlign: 'right',
+                    userSelect: 'none',
+                    overflowY: 'hidden',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  {Array.from({ length: Math.max(lineCount, 12) }).map((_, i) => {
+                    const isCurrent = i + 1 === activeLine
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          height: `${lineHeightPx}px`,
+                          lineHeight: `${lineHeightPx}px`,
+                          color: isCurrent
+                            ? (theme === 'light' ? '#4338ca' : '#ffffff')
+                            : (theme === 'light' ? '#64748b' : '#485263'),
+                          fontWeight: isCurrent ? 800 : 500,
+                          fontSize: '12px',
+                          transition: 'color 0.15s'
+                        }}
+                      >
+                        {i + 1}
+                      </div>
+                    )
+                  })}
+                </div>
 
-              {/* Editor Overlay Container */}
-              <div className="main-code-editor-overlay" style={{
-                position: 'relative',
-                flex: 1,
-                height: '100%',
-                overflow: 'hidden'
-              }}>
-                {/* Active Line Highlight Background */}
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  pointerEvents: 'none',
-                  overflow: 'hidden',
-                  zIndex: 0
+                {/* Editor Overlay Container */}
+                <div className="main-code-editor-overlay" style={{
+                  position: 'relative',
+                  flex: 1,
+                  height: '100%',
+                  overflow: 'hidden'
                 }}>
-                  <div
-                    ref={highlightRef}
+                  {/* Active Line Highlight Background */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    pointerEvents: 'none',
+                    overflow: 'hidden',
+                    zIndex: 0
+                  }}>
+                    <div
+                      ref={highlightRef}
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        height: `${lineHeightPx}px`,
+                        top: 16 + (activeLine - 1) * lineHeightPx,
+                        background: theme === 'light' ? 'rgba(99, 102, 241, 0.07)' : 'rgba(255, 255, 255, 0.04)',
+                        borderLeft: theme === 'light' ? '3px solid #4338ca' : '3px solid #818cf8',
+                        transition: 'top 0.08s ease-out',
+                        zIndex: 0
+                      }}
+                    />
+                  </div>
+
+                  {/* Highlighted Code (Behind Textarea) */}
+                  <pre
+                    className="main-code-editor-pre"
                     style={{
                       position: 'absolute',
+                      top: 0,
                       left: 0,
-                      right: 0,
-                      height: `${lineHeightPx}px`,
-                      top: 16 + (activeLine - 1) * lineHeightPx,
-                      background: theme === 'light' ? '#f1f5f9' : 'rgba(255, 255, 255, 0.04)',
-                      transition: 'top 0.08s ease-out',
-                      zIndex: 0
+                      width: '100%',
+                      height: '100%',
+                      margin: 0,
+                      padding: 16,
+                      fontFamily: editorFontFamily,
+                      fontSize: `${fontSize}px`,
+                      fontWeight: 500,
+                      lineHeight: `${lineHeightPx}px`,
+                      letterSpacing: '0px',
+                      color: theme === 'light' ? '#111827' : '#c9d1d9',
+                      whiteSpace: 'pre',
+                      wordBreak: 'normal',
+                      wordWrap: 'normal',
+                      overflowWrap: 'normal',
+                      overflow: 'hidden',
+                      pointerEvents: 'none',
+                      boxSizing: 'border-box',
+                      background: 'transparent',
+                      tabSize: 4,
+                      WebkitFontSmoothing: 'antialiased',
+                      MozOsxFontSmoothing: 'grayscale',
+                      textRendering: 'optimizeLegibility',
+                      zIndex: 1
+                    }}
+                    ref={preRef}
+                    dangerouslySetInnerHTML={{
+                      __html: (() => {
+                        const lines = editorCode.split('\n')
+                        const lineIndents = lines.map(line => {
+                          if (line.trim() === '') return -1
+                          const match = line.match(/^ */)
+                          return match ? match[0].length : 0
+                        })
+
+                        for (let i = 0; i < lines.length; i++) {
+                          if (lineIndents[i] === -1) {
+                            let prevIndent = 0
+                            for (let j = i - 1; j >= 0; j--) {
+                              if (lineIndents[j] !== -1) { prevIndent = lineIndents[j]; break; }
+                            }
+                            let nextIndent = 0
+                            for (let j = i + 1; j < lines.length; j++) {
+                              if (lineIndents[j] !== -1) { nextIndent = lineIndents[j]; break; }
+                            }
+                            lineIndents[i] = Math.min(prevIndent, nextIndent)
+                          }
+                        }
+
+                        const syntaxColors = theme === 'light' ? {
+                          comments: '#1a7f37',
+                          strings: '#0a3069',
+                          preproc: '#cf222e',
+                          keywords: '#cf222e',
+                          customTypes: '#111827',
+                          numbers: '#0550ae',
+                          funcs: '#8250df',
+                          types: '#0550ae'
+                        } : {
+                          comments: '#8b949e',
+                          strings: '#a5d6ff',
+                          preproc: '#ff7b72',
+                          keywords: '#ff7b72',
+                          customTypes: '#d2a6ff',
+                          numbers: '#79c0ff',
+                          funcs: '#dcdcaa',
+                          types: '#ffa657'
+                        }
+
+                        const guideColor = theme === 'light' ? '#cbd5e1' : 'rgba(255, 255, 255, 0.12)'
+                        const guideStyle = `display: inline-block; width: 4ch; border-left: 1px dashed ${guideColor}; box-sizing: border-box; height: ${lineHeightPx}px; vertical-align: top; margin: 0; padding: 0;`
+
+                        const outputLines = lines.map((line, idx) => {
+                          const rawLeading = (line.match(/^ */) || [''])[0].length
+                          const lineText = line.substring(rawLeading)
+
+                          const escape = (text: string) => text
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+
+                          let escaped = escape(lineText)
+
+                          const KEYWORDS = /\b(using|namespace|struct|class|void|int|char|bool|float|double|long|short|unsigned|return|if|else|for|while|do|switch|case|break|continue|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
+                          const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
+                          const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
+                          const NUMBERS  = /\b(\d+\.?\d*)\b/g
+                          const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
+                          const CUSTOM_TYPES = /\b(Process|Node|TreeNode|ListNode|Solution|Graph|Queue|Stack|Heap)\b/g
+                          const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
+                          const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print|max|min|sort)\b/g
+
+                          type Tok = { start: number; end: number; color: string; content: string }
+                          const tokens: Tok[] = []
+
+                          const addTokens = (re: RegExp, color: string) => {
+                            re.lastIndex = 0
+                            let m: RegExpExecArray | null
+                            while ((m = re.exec(escaped)) !== null) {
+                              tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
+                            }
+                          }
+
+                          const templates = /&lt;([a-zA-Z_]\w*)&gt;/g
+                          templates.lastIndex = 0
+                          let tm: RegExpExecArray | null
+                          while ((tm = templates.exec(escaped)) !== null) {
+                            const word = tm[1]
+                            const wordIndex = tm.index + 4
+                            const color = /^(int|char|bool|float|double|void)$/.test(word)
+                              ? syntaxColors.keywords
+                              : (theme === 'light' ? '#111827' : '#d2a6ff')
+                            tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
+                          }
+
+                          const structClass = /\b(struct|class)\s+([a-zA-Z_]\w*)\b/g
+                          structClass.lastIndex = 0
+                          let sc: RegExpExecArray | null
+                          while ((sc = structClass.exec(escaped)) !== null) {
+                            const word = sc[2]
+                            const wordIndex = sc.index + sc[1].length + 1
+                            tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#111827' : '#d2a6ff', content: word })
+                          }
+
+                          addTokens(COMMENTS, syntaxColors.comments)
+                          addTokens(STRINGS, syntaxColors.strings)
+                          addTokens(PREPROC, syntaxColors.preproc)
+                          addTokens(KEYWORDS, syntaxColors.keywords)
+                          addTokens(CUSTOM_TYPES, syntaxColors.customTypes)
+                          addTokens(NUMBERS, syntaxColors.numbers)
+                          addTokens(FUNCS, syntaxColors.funcs)
+                          addTokens(TYPES, syntaxColors.types)
+
+                          tokens.sort((a, b) => a.start - b.start)
+                          
+                          const noOverlap: Tok[] = []
+                          let cursor = 0
+                          for (const tok of tokens) {
+                            if (tok.start >= cursor) {
+                              noOverlap.push(tok)
+                              cursor = tok.end
+                            }
+                          }
+
+                          let tokenizedText = ''
+                          let pos = 0
+                          for (const tok of noOverlap) {
+                            tokenizedText += escaped.slice(pos, tok.start)
+                            const isComment = tok.color === syntaxColors.comments
+                            const isKwOrType = tok.color === syntaxColors.keywords || tok.color === syntaxColors.customTypes
+                            const styleStr = `color: ${tok.color};${isComment ? ' font-style: italic;' : ''}${isKwOrType ? ' font-weight: 600;' : ''}`
+                            tokenizedText += `<span style="${styleStr}">${tok.content}</span>`
+                            pos = tok.end
+                          }
+                          tokenizedText += escaped.slice(pos)
+
+                          const numGuides = Math.floor(lineIndents[idx] / 4)
+                          let guidesHtml = ''
+                          for (let g = 0; g < numGuides; g++) {
+                            guidesHtml += `<span class="indent-guide" style="${guideStyle}"></span>`
+                          }
+
+                          const extraSpacesCount = rawLeading - (numGuides * 4)
+                          const remainingSpaces = extraSpacesCount > 0 ? ' '.repeat(extraSpacesCount) : ''
+
+                          return guidesHtml + remainingSpaces + tokenizedText
+                        })
+
+                        return outputLines.join('\n') + '\n'
+                      })()
+                    }}
+                  />
+
+                  <textarea
+                    className="main-code-editor-textarea"
+                    ref={textareaRef}
+                    value={editorCode}
+                    onChange={e => {
+                      handleCodeChange(e.target.value)
+                      const selStart = e.target.selectionStart
+                      const newlines = e.target.value.substring(0, selStart).split('\n')
+                      setActiveLine(newlines.length)
+                    }}
+                    onKeyDown={handleKeyDownLocal}
+                    onSelect={handleSelect}
+                    onClick={handleSelect}
+                    onKeyUp={handleSelect}
+                    placeholder="// Write or paste your custom code solution here...&#10;// Click 'Save' or press Command+S / Ctrl+S to save to your local database."
+                    spellCheck={false}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      margin: 0,
+                      padding: 16,
+                      fontFamily: editorFontFamily,
+                      fontSize: `${fontSize}px`,
+                      fontWeight: 500,
+                      lineHeight: `${lineHeightPx}px`,
+                      letterSpacing: '0px',
+                      color: 'transparent',
+                      caretColor: theme === 'light' ? '#000000' : '#ffffff',
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      resize: 'none',
+                      tabSize: 4,
+                      boxSizing: 'border-box',
+                      whiteSpace: 'pre',
+                      wordBreak: 'normal',
+                      wordWrap: 'normal',
+                      overflowWrap: 'normal',
+                      overflow: 'auto',
+                      WebkitTextFillColor: 'transparent',
+                      WebkitFontSmoothing: 'antialiased',
+                      MozOsxFontSmoothing: 'grayscale',
+                      textRendering: 'optimizeLegibility',
+                      display: 'block',
+                      zIndex: 2
                     }}
                   />
                 </div>
-
-                {/* Highlighted Code (Behind Textarea) */}
-                <pre
-                  className="main-code-editor-pre"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    margin: 0,
-                    padding: 16,
-                    fontFamily: editorFontFamily,
-                    fontSize: `${fontSize}px`,
-                    lineHeight: `${lineHeightPx}px`,
-                    color: theme === 'light' ? '#24292e' : '#c9d1d9',
-                    whiteSpace: 'pre',
-                    wordBreak: 'normal',
-                    wordWrap: 'normal',
-                    overflowWrap: 'normal',
-                    overflow: 'hidden',
-                    pointerEvents: 'none',
-                    boxSizing: 'border-box',
-                    background: 'transparent',
-                    tabSize: 4,
-                    WebkitFontSmoothing: 'antialiased',
-                    MozOsxFontSmoothing: 'grayscale',
-                    zIndex: 1
-                  }}
-                  ref={preRef}
-                  dangerouslySetInnerHTML={{
-                    __html: (() => {
-                      const lines = editorCode.split('\n')
-                      const lineIndents = lines.map(line => {
-                        if (line.trim() === '') return -1
-                        const match = line.match(/^ */)
-                        return match ? match[0].length : 0
-                      })
-
-                      for (let i = 0; i < lines.length; i++) {
-                        if (lineIndents[i] === -1) {
-                          let prevIndent = 0
-                          for (let j = i - 1; j >= 0; j--) {
-                            if (lineIndents[j] !== -1) { prevIndent = lineIndents[j]; break; }
-                          }
-                          let nextIndent = 0
-                          for (let j = i + 1; j < lines.length; j++) {
-                            if (lineIndents[j] !== -1) { nextIndent = lineIndents[j]; break; }
-                          }
-                          lineIndents[i] = Math.min(prevIndent, nextIndent)
-                        }
-                      }
-
-                      const syntaxColors = theme === 'light' ? {
-                        comments: '#15803d',
-                        strings: '#0284c7',
-                        preproc: '#dc2626',
-                        keywords: '#4f46e5',
-                        customTypes: '#0f172a',
-                        numbers: '#d97706',
-                        funcs: '#6b21a8',
-                        types: '#1d4ed8'
-                      } : {
-                        comments: '#8b949e',
-                        strings: '#a5d6ff',
-                        preproc: '#ff7b72',
-                        keywords: '#ff7b72',
-                        customTypes: '#d2a6ff',
-                        numbers: '#79c0ff',
-                        funcs: '#dcdcaa',
-                        types: '#ffa657'
-                      }
-
-                      const guideColor = theme === 'light' ? '#cbd5e1' : 'rgba(255, 255, 255, 0.12)'
-                      const guideStyle = `display: inline-block; width: 4ch; border-left: 1px dashed ${guideColor}; box-sizing: border-box; height: ${lineHeightPx}px; vertical-align: top; margin: 0; padding: 0;`
-
-                      const outputLines = lines.map((line, idx) => {
-                        const rawLeading = (line.match(/^ */) || [''])[0].length
-                        const lineText = line.substring(rawLeading)
-
-                        const escape = (text: string) => text
-                          .replace(/&/g, '&amp;')
-                          .replace(/</g, '&lt;')
-                          .replace(/>/g, '&gt;')
-
-                        let escaped = escape(lineText)
-
-                        const KEYWORDS = /\b(using|namespace|struct|class|void|int|char|bool|float|double|long|short|unsigned|return|if|else|for|while|do|switch|case|break|continue|public|private|protected|new|delete|this|nullptr|true|false|const|static|auto|typename|template|virtual|override|inline|import|from|as|def|self|lambda|and|or|not|in|is|let|var|function|console|log|export|default|package|interface|implements|extends|throws|throw|try|catch|finally)\b/g
-                        const STRINGS  = /(["'`])(?:(?!\1)[^\\]|\\.)*?\1/g
-                        const COMMENTS = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g
-                        const NUMBERS  = /\b(\d+\.?\d*)\b/g
-                        const PREPROC  = /(#include|#define|#if|#endif|#ifdef)/g
-                        const CUSTOM_TYPES = /\b(Process|Node|TreeNode|ListNode|Solution|Graph|Queue|Stack|Heap)\b/g
-                        const FUNCS    = /\b([a-zA-Z_]\w*)(?=\s*\()/g
-                        const TYPES    = /\b(std|vector|string|map|set|list|cout|cin|endl|System|out|println|print|max|min|sort)\b/g
-
-                        type Tok = { start: number; end: number; color: string; content: string }
-                        const tokens: Tok[] = []
-
-                        const addTokens = (re: RegExp, color: string) => {
-                          re.lastIndex = 0
-                          let m: RegExpExecArray | null
-                          while ((m = re.exec(escaped)) !== null) {
-                            tokens.push({ start: m.index, end: m.index + m[0].length, color, content: m[0] })
-                          }
-                        }
-
-                        const templates = /&lt;([a-zA-Z_]\w*)&gt;/g
-                        templates.lastIndex = 0
-                        let tm: RegExpExecArray | null
-                        while ((tm = templates.exec(escaped)) !== null) {
-                          const word = tm[1]
-                          const wordIndex = tm.index + 4
-                          const color = /^(int|char|bool|float|double|void)$/.test(word)
-                            ? syntaxColors.keywords
-                            : (theme === 'light' ? '#24292e' : '#d2a6ff')
-                          tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
-                        }
-
-                        const structClass = /\b(struct|class)\s+([a-zA-Z_]\w*)\b/g
-                        structClass.lastIndex = 0
-                        let sc: RegExpExecArray | null
-                        while ((sc = structClass.exec(escaped)) !== null) {
-                          const word = sc[2]
-                          const wordIndex = sc.index + sc[1].length + 1
-                          tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#24292e' : '#d2a6ff', content: word })
-                        }
-
-                        addTokens(COMMENTS, syntaxColors.comments)
-                        addTokens(STRINGS, syntaxColors.strings)
-                        addTokens(PREPROC, syntaxColors.preproc)
-                        addTokens(KEYWORDS, syntaxColors.keywords)
-                        addTokens(CUSTOM_TYPES, syntaxColors.customTypes)
-                        addTokens(NUMBERS, syntaxColors.numbers)
-                        addTokens(FUNCS, syntaxColors.funcs)
-                        addTokens(TYPES, syntaxColors.types)
-
-                        tokens.sort((a, b) => a.start - b.start)
-                        
-                        const noOverlap: Tok[] = []
-                        let cursor = 0
-                        for (const tok of tokens) {
-                          if (tok.start >= cursor) {
-                            noOverlap.push(tok)
-                            cursor = tok.end
-                          }
-                        }
-
-                        let tokenizedText = ''
-                        let pos = 0
-                        for (const tok of noOverlap) {
-                          tokenizedText += escaped.slice(pos, tok.start)
-                          tokenizedText += `<span style="color: ${tok.color}">${tok.content}</span>`
-                          pos = tok.end
-                        }
-                        tokenizedText += escaped.slice(pos)
-
-                        const numGuides = Math.floor(lineIndents[idx] / 4)
-                        let guidesHtml = ''
-                        for (let g = 0; g < numGuides; g++) {
-                          guidesHtml += `<span class="indent-guide" style="${guideStyle}"></span>`
-                        }
-
-                        const extraSpacesCount = rawLeading - (numGuides * 4)
-                        const remainingSpaces = extraSpacesCount > 0 ? ' '.repeat(extraSpacesCount) : ''
-
-                        return guidesHtml + remainingSpaces + tokenizedText
-                      })
-
-                      return outputLines.join('\n') + '\n'
-                    })()
-                  }}
-                />
-
-                <textarea
-                  className="main-code-editor-textarea"
-                  ref={textareaRef}
-                  value={editorCode}
-                  onChange={e => {
-                    handleCodeChange(e.target.value)
-                    const selStart = e.target.selectionStart
-                    const newlines = e.target.value.substring(0, selStart).split('\n')
-                    setActiveLine(newlines.length)
-                  }}
-                  onKeyDown={handleKeyDownLocal}
-                  onSelect={handleSelect}
-                  onClick={handleSelect}
-                  onKeyUp={handleSelect}
-                  placeholder="// Write or paste your custom code solution here...&#10;// Click 'Save' or press Command+S / Ctrl+S to save to your local database."
-                  spellCheck={false}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    margin: 0,
-                    padding: 16,
-                    fontFamily: editorFontFamily,
-                    fontSize: `${fontSize}px`,
-                    lineHeight: `${lineHeightPx}px`,
-                    color: 'transparent',
-                    caretColor: theme === 'light' ? '#000000' : '#ffffff',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    resize: 'none',
-                    tabSize: 4,
-                    boxSizing: 'border-box',
-                    whiteSpace: 'pre',
-                    wordBreak: 'normal',
-                    wordWrap: 'normal',
-                    overflowWrap: 'normal',
-                    overflow: 'auto',
-                    WebkitTextFillColor: 'transparent',
-                    WebkitFontSmoothing: 'antialiased',
-                    MozOsxFontSmoothing: 'grayscale',
-                    display: 'block',
-                    zIndex: 2
-                  }}
-                />
-              </div>
             </div>
             {/* Status footer info */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: 11, color: 'var(--text-4)', flexShrink: 0 }}>

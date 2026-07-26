@@ -181,12 +181,133 @@ export function EditableCodeBlock({
       const start = textarea.selectionStart
       const end = textarea.selectionEnd
       const val = textarea.value
-      const newVal = val.substring(0, start) + '    ' + val.substring(end)
+
+      let newVal = val
+      let newStart = start
+      let newEnd = end
+
+      if (e.shiftKey) {
+        // Outdent (Shift + Tab) - works for single cursor or multi-line selection
+        const effectiveEnd = (start < end && val.charAt(end - 1) === '\n') ? end - 1 : end
+        const firstLineStart = val.lastIndexOf('\n', start - 1) + 1
+        const nextNL = val.indexOf('\n', effectiveEnd)
+        const lastLineEnd = nextNL === -1 ? val.length : nextNL
+
+        const targetText = val.substring(firstLineStart, lastLineEnd)
+        const targetLines = targetText.split('\n')
+
+        let firstLineRemoved = 0
+        let totalRemoved = 0
+
+        const modifiedLines = targetLines.map((line, idx) => {
+          let spacesToRemove = 0
+          if (line.startsWith('\t')) {
+            spacesToRemove = 1
+          } else {
+            const match = line.match(/^ {1,4}/)
+            spacesToRemove = match ? match[0].length : 0
+          }
+          if (idx === 0) firstLineRemoved = spacesToRemove
+          totalRemoved += spacesToRemove
+          return line.substring(spacesToRemove)
+        })
+
+        const newBlock = modifiedLines.join('\n')
+        newVal = val.substring(0, firstLineStart) + newBlock + val.substring(lastLineEnd)
+        newStart = Math.max(firstLineStart, start - firstLineRemoved)
+        newEnd = Math.max(newStart, end - totalRemoved)
+      } else {
+        // Indent (Tab)
+        if (start === end) {
+          // Single cursor: insert 4 spaces
+          newVal = val.substring(0, start) + '    ' + val.substring(end)
+          newStart = start + 4
+          newEnd = start + 4
+        } else {
+          // Selection (single or multi-line): indent all selected lines
+          const effectiveEnd = (start < end && val.charAt(end - 1) === '\n') ? end - 1 : end
+          const firstLineStart = val.lastIndexOf('\n', start - 1) + 1
+          const nextNL = val.indexOf('\n', effectiveEnd)
+          const lastLineEnd = nextNL === -1 ? val.length : nextNL
+
+          const targetText = val.substring(firstLineStart, lastLineEnd)
+          const targetLines = targetText.split('\n')
+
+          const indentedLines = targetLines.map(line => '    ' + line)
+          const newBlock = indentedLines.join('\n')
+
+          newVal = val.substring(0, firstLineStart) + newBlock + val.substring(lastLineEnd)
+          newStart = start + 4
+          newEnd = end + (4 * targetLines.length)
+        }
+      }
+
       handleCodeChange(newVal, true)
-      // Reset selection
+
       setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 4
+        const el = textareaRef.current || textarea
+        if (el) {
+          el.selectionStart = newStart
+          el.selectionEnd = newEnd
+        }
       }, 0)
+      return
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      e.preventDefault()
+      const textarea = e.currentTarget
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const val = textarea.value
+
+      const effectiveEnd = (start < end && val.charAt(end - 1) === '\n') ? end - 1 : end
+      const firstLineStart = val.lastIndexOf('\n', start - 1) + 1
+      const nextNL = val.indexOf('\n', effectiveEnd)
+      const lastLineEnd = nextNL === -1 ? val.length : nextNL
+
+      const targetText = val.substring(firstLineStart, lastLineEnd)
+      const targetLines = targetText.split('\n')
+
+      const nonEmptyLines = targetLines.filter(l => l.trim().length > 0)
+      const allCommented = nonEmptyLines.length > 0 && nonEmptyLines.every(l => l.trim().startsWith('//'))
+
+      let firstLineDelta = 0
+      let totalDelta = 0
+
+      const modifiedLines = targetLines.map((line, idx) => {
+        let newLine = line
+        let delta = 0
+        if (allCommented) {
+          newLine = line.replace(/(\s*)\/\/ ?/, '$1')
+          delta = newLine.length - line.length
+        } else {
+          const match = line.match(/^(\s*)/)
+          const indent = match ? match[1] : ''
+          const rest = line.substring(indent.length)
+          newLine = indent + '// ' + rest
+          delta = newLine.length - line.length
+        }
+        if (idx === 0) firstLineDelta = delta
+        totalDelta += delta
+        return newLine
+      })
+
+      const newBlock = modifiedLines.join('\n')
+      const newVal = val.substring(0, firstLineStart) + newBlock + val.substring(lastLineEnd)
+      const newStart = Math.max(firstLineStart, start + firstLineDelta)
+      const newEnd = Math.max(newStart, end + totalDelta)
+
+      handleCodeChange(newVal, true)
+
+      setTimeout(() => {
+        const el = textareaRef.current || textarea
+        if (el) {
+          el.selectionStart = newStart
+          el.selectionEnd = newEnd
+        }
+      }, 0)
+      return
     }
 
     if (e.key === 'Backspace') {
@@ -261,38 +382,63 @@ export function EditableCodeBlock({
       '[': ']',
       '(': ')',
       '"': '"',
-      "'": "'"
+      "'": "'",
+      '`': '`'
     }
 
     if (autoPairs[e.key] !== undefined) {
-      e.preventDefault()
       const textarea = e.currentTarget
       const start = textarea.selectionStart
       const end = textarea.selectionEnd
       const val = textarea.value
       const closingChar = autoPairs[e.key]
-      
-      const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
-      handleCodeChange(newVal, true)
-      
-      setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 1
-      }, 0)
-      return
+
+      if (start !== end) {
+        // Wrap selected text
+        e.preventDefault()
+        const selected = val.substring(start, end)
+        const newVal = val.substring(0, start) + e.key + selected + closingChar + val.substring(end)
+        handleCodeChange(newVal, true)
+
+        setTimeout(() => {
+          const el = textareaRef.current || textarea
+          if (el) {
+            el.selectionStart = start + 1
+            el.selectionEnd = end + 1
+          }
+        }, 0)
+        return
+      } else {
+        // Auto-close single cursor
+        e.preventDefault()
+        const newVal = val.substring(0, start) + e.key + closingChar + val.substring(end)
+        handleCodeChange(newVal, true)
+
+        setTimeout(() => {
+          const el = textareaRef.current || textarea
+          if (el) {
+            el.selectionStart = el.selectionEnd = start + 1
+          }
+        }, 0)
+        return
+      }
     }
 
     // Step over closing brackets and quotes if typed
-    const closingChars = new Set(['}', ']', ')', '"', "'"])
+    const closingChars = new Set(['}', ']', ')', '"', "'", '`'])
     if (closingChars.has(e.key)) {
       const textarea = e.currentTarget
       const start = textarea.selectionStart
-      const val = textarea.value
-      if (val.charAt(start) === e.key) {
-        e.preventDefault()
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + 1
-        }, 0)
-        return
+      const end = textarea.selectionEnd
+      if (start === end) {
+        const val = textarea.value
+        if (val.charAt(start) === e.key) {
+          e.preventDefault()
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + 1
+          }, 0)
+          return
+        }
       }
     }
   }
@@ -325,14 +471,14 @@ export function EditableCodeBlock({
     }
 
     const syntaxColors = theme === 'light' ? {
-      comments: '#3c8054',
+      comments: '#1a7f37',
       strings: '#0a3069',
       preproc: '#cf222e',
-      keywords: '#0056b3',
-      customTypes: '#24292e',
+      keywords: '#cf222e',
+      customTypes: '#111827',
       numbers: '#0550ae',
-      funcs: '#24292e',
-      types: '#0056b3'
+      funcs: '#8250df',
+      types: '#0550ae'
     } : {
       comments: '#8b949e',
       strings: '#a5d6ff',
@@ -386,7 +532,7 @@ export function EditableCodeBlock({
         const wordIndex = tm.index + 4
         const color = /^(int|char|bool|float|double|void)$/.test(word)
           ? syntaxColors.keywords
-          : (theme === 'light' ? '#24292e' : '#d2a6ff')
+          : (theme === 'light' ? '#111827' : '#d2a6ff')
         tokens.push({ start: wordIndex, end: wordIndex + word.length, color, content: word })
       }
 
@@ -396,7 +542,7 @@ export function EditableCodeBlock({
       while ((sc = structClass.exec(escaped)) !== null) {
         const word = sc[2]
         const wordIndex = sc.index + sc[1].length + 1
-        tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#24292e' : '#d2a6ff', content: word })
+        tokens.push({ start: wordIndex, end: wordIndex + word.length, color: theme === 'light' ? '#111827' : '#d2a6ff', content: word })
       }
 
       addTokens(COMMENTS, syntaxColors.comments)
@@ -423,7 +569,10 @@ export function EditableCodeBlock({
       let pos = 0
       for (const tok of noOverlap) {
         tokenizedText += escaped.slice(pos, tok.start)
-        tokenizedText += `<span style="color: ${tok.color}">${tok.content}</span>`
+        const isComment = tok.color === syntaxColors.comments
+        const isKwOrType = tok.color === syntaxColors.keywords || tok.color === syntaxColors.customTypes
+        const styleStr = `color: ${tok.color};${isComment ? ' font-style: italic;' : ''}${isKwOrType ? ' font-weight: 600;' : ''}`
+        tokenizedText += `<span style="${styleStr}">${tok.content}</span>`
         pos = tok.end
       }
       tokenizedText += escaped.slice(pos)
