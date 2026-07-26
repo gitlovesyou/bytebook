@@ -318,8 +318,9 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
 
-  const undoStackRef = useRef<string[]>([])
-  const redoStackRef = useRef<string[]>([])
+  type HistoryEntry = { code: string; start: number; end: number }
+  const undoStackRef = useRef<HistoryEntry[]>([])
+  const redoStackRef = useRef<HistoryEntry[]>([])
   const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const updateCanUndoRedo = () => {
@@ -328,6 +329,10 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
   }
 
   const handleCodeChange = (newVal: string, forceHistoryPush = false) => {
+    const ta = textareaRef.current
+    const curStart = ta ? ta.selectionStart : editorCode.length
+    const curEnd = ta ? ta.selectionEnd : editorCode.length
+
     setEditorCode(newVal)
     
     // Clear redo stack on typing
@@ -336,9 +341,12 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       setCanRedo(false)
     }
 
+    const snapshot: HistoryEntry = { code: editorCode, start: curStart, end: curEnd }
+
     if (forceHistoryPush) {
-      if (undoStackRef.current[undoStackRef.current.length - 1] !== editorCode) {
-        undoStackRef.current.push(editorCode)
+      const last = undoStackRef.current[undoStackRef.current.length - 1]
+      if (!last || last.code !== editorCode) {
+        undoStackRef.current.push(snapshot)
         if (undoStackRef.current.length > 100) undoStackRef.current.shift()
         setCanUndo(true)
       }
@@ -350,10 +358,10 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       if (historyTimeoutRef.current) {
         clearTimeout(historyTimeoutRef.current)
       }
-      const prevCode = editorCode
       historyTimeoutRef.current = setTimeout(() => {
-        if (undoStackRef.current[undoStackRef.current.length - 1] !== prevCode) {
-          undoStackRef.current.push(prevCode)
+        const last = undoStackRef.current[undoStackRef.current.length - 1]
+        if (!last || last.code !== snapshot.code) {
+          undoStackRef.current.push(snapshot)
           if (undoStackRef.current.length > 100) undoStackRef.current.shift()
           setCanUndo(true)
         }
@@ -370,23 +378,53 @@ function ActiveQuestionWorkspace({ active, phaseColor, initialCode, topicSlug, i
       historyTimeoutRef.current = null
     }
 
-    const currentVal = editorCode
-    const prevVal = undoStackRef.current.pop()!
+    const ta = textareaRef.current
+    const curStart = ta ? ta.selectionStart : editorCode.length
+    const curEnd = ta ? ta.selectionEnd : editorCode.length
+    const currentEntry: HistoryEntry = { code: editorCode, start: curStart, end: curEnd }
+
+    const prevEntry = undoStackRef.current.pop()!
     
-    redoStackRef.current.push(currentVal)
-    setEditorCode(prevVal)
+    redoStackRef.current.push(currentEntry)
+    setEditorCode(prevEntry.code)
     updateCanUndoRedo()
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const rStart = Math.min(prevEntry.start, prevEntry.code.length)
+        const rEnd = Math.min(prevEntry.end, prevEntry.code.length)
+        textareaRef.current.selectionStart = rStart
+        textareaRef.current.selectionEnd = rEnd
+        const newlines = prevEntry.code.substring(0, rStart).split('\n')
+        setActiveLine(newlines.length)
+      }
+    }, 0)
   }
 
   const handleRedo = () => {
     if (redoStackRef.current.length === 0) return
 
-    const currentVal = editorCode
-    const nextVal = redoStackRef.current.pop()!
+    const ta = textareaRef.current
+    const curStart = ta ? ta.selectionStart : editorCode.length
+    const curEnd = ta ? ta.selectionEnd : editorCode.length
+    const currentEntry: HistoryEntry = { code: editorCode, start: curStart, end: curEnd }
 
-    undoStackRef.current.push(currentVal)
-    setEditorCode(nextVal)
+    const nextEntry = redoStackRef.current.pop()!
+
+    undoStackRef.current.push(currentEntry)
+    setEditorCode(nextEntry.code)
     updateCanUndoRedo()
+
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const rStart = Math.min(nextEntry.start, nextEntry.code.length)
+        const rEnd = Math.min(nextEntry.end, nextEntry.code.length)
+        textareaRef.current.selectionStart = rStart
+        textareaRef.current.selectionEnd = rEnd
+        const newlines = nextEntry.code.substring(0, rStart).split('\n')
+        setActiveLine(newlines.length)
+      }
+    }, 0)
   }
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
