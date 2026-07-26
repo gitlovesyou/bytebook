@@ -14,11 +14,14 @@ export async function getHighlighter(): Promise<Highlighter> {
   return highlighter
 }
 
-export async function highlight(code: string, lang: string, isDark = true): Promise<string> {
+export async function highlight(code: string, lang: string): Promise<string> {
   const hl = await getHighlighter()
   const validLang = hl.getLoadedLanguages().includes(lang) ? lang : 'text'
   return hl.codeToHtml(code, {
     lang: validLang,
-    theme: isDark ? 'github-dark' : 'github-light',
+    themes: {
+      light: 'github-light',
+      dark: 'github-dark',
+    },
   })
 }

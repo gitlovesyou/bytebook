@@ -465,8 +465,19 @@ hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .code-block-body { padding: 18px 20px; overflow-x: auto; }
 .code-block-body pre { margin: 0; }
 .code-block-pre {
-  color: #c9d1d9;
+  color: var(--text);
   background: transparent;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, Monaco, monospace;
+}
+
+/* Shiki Dual-Theme Light/Dark Auto-Switching for Article Code Blocks */
+html[data-theme="light"] .shiki,
+html[data-theme="light"] .shiki span {
+  color: var(--shiki-light) !important;
+}
+html[data-theme="dark"] .shiki,
+html[data-theme="dark"] .shiki span {
+  color: var(--shiki-dark) !important;
 }
 
 /* ════════════════════════════════════════
