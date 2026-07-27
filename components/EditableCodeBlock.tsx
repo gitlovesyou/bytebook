@@ -783,7 +783,14 @@ export function EditableCodeBlock({
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <span className="code-block-lang" style={{ color: theme === 'light' ? '#0f172a' : '#fff' }}>{displayLang}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="no-print" style={{ display: 'flex', gap: 6, opacity: 0.85 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56', display: 'inline-block' }} />
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e', display: 'inline-block' }} />
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f', display: 'inline-block' }} />
+          </div>
+          <span className="code-block-lang" style={{ color: theme === 'light' ? '#0f172a' : '#fff' }}>{displayLang}</span>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {hasCode && (
             <button className={`code-block-copy ${copied ? 'copied' : ''}`} style={{ padding: '3px 10px', fontSize: 11, fontWeight: 700 }} onClick={handleCopy}>

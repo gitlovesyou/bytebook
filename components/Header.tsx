@@ -14,7 +14,7 @@ export function Header() {
         {/* Logo */}
         <Link href="/" className="header-logo">
           <div className="logo-icon">📚</div>
-          ByteBook
+          <span className="logo-text">ByteBook</span>
         </Link>
 
         {/* Search */}
@@ -27,57 +27,22 @@ export function Header() {
           {/* 💻 Workspace quick link */}
           <Link
             href="/workspace"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '3px 8px', borderRadius: 6, textDecoration: 'none',
-              background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)',
-              color: '#818cf8', fontWeight: 700, fontSize: 11,
-              fontFamily: 'JetBrains Mono, monospace',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.22)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(99,102,241,0.55)'
-              ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 10px rgba(99,102,241,0.2)'
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.12)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(99,102,241,0.3)'
-              ;(e.currentTarget as HTMLElement).style.boxShadow = 'none'
-            }}
+            className="nav-pill nav-pill-workspace"
           >
-            💻 Workspace
+            <span className="pill-dot green-dot" />
+            <span>💻 Workspace</span>
           </Link>
 
           {/* ★ Starred quick link */}
           <Link
             href="/my-code"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '3px 8px', borderRadius: 6, textDecoration: 'none',
-              background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)',
-              color: '#f59e0b', fontWeight: 700, fontSize: 11,
-              fontFamily: 'JetBrains Mono, monospace',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(245,158,11,0.22)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(245,158,11,0.55)'
-              ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 10px rgba(245,158,11,0.2)'
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(245,158,11,0.12)'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(245,158,11,0.3)'
-              ;(e.currentTarget as HTMLElement).style.boxShadow = 'none'
-            }}
+            className="nav-pill nav-pill-starred"
           >
-            ★ Starred
+            <span className="pill-dot amber-dot" />
+            <span>★ Starred</span>
           </Link>
 
           <ThemeToggle />
-
 
           {/* Hamburger for mobile */}
           <button
@@ -100,7 +65,7 @@ export function Header() {
       {/* Mobile overlay */}
       {menuOpen && (
         <div
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:89, top:'var(--header-h)' }}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex:89, top:'var(--header-h)' }}
           onClick={() => {
             setMenuOpen(false)
             document.querySelector('.sidebar')?.classList.remove('open')

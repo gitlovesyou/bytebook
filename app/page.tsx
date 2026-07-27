@@ -45,15 +45,15 @@ export default function HomePage() {
       {/* HERO */}
       <section className="hero">
         <div className="hero-eyebrow">
-          <span>✨</span>
-          Production-Grade CS Notes
+          <span className="pill-dot green-dot" />
+          <span>Production-Grade CS Notes & Demos</span>
         </div>
         <h1 className="hero-title">
-          Learn CS Concepts<br />
+          Master CS Concepts<br />
           <span className="gradient-text">Deeply & Visually</span>
         </h1>
         <p className="hero-subtitle">
-          Rich notes, syntax-highlighted code, and interactive visualizers — all in one beautifully designed platform.
+          Rich interactive notes, syntax-highlighted code, and step-by-step visualizers — crafted with ultra-smooth precision.
         </p>
         <div className="hero-actions">
           <Link href="/os/introduction" className="btn btn-primary">
@@ -61,32 +61,32 @@ export default function HomePage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </Link>
           <Link href="/os/cpu-scheduling" className="btn btn-ghost">
-            ⚡ Try Live Demos
+            ⚡ Try Interactive Demos
           </Link>
         </div>
 
         <div className="hero-stats">
           <div style={{ textAlign: 'center' }}>
             <div className="hero-stat-num">14+</div>
-            <div className="hero-stat-lbl">Articles</div>
+            <div className="hero-stat-lbl">Detailed Guides</div>
           </div>
-          <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
+          <div style={{ width: 1, height: 40, background: 'var(--border)', opacity: 0.6 }} />
           <div style={{ textAlign: 'center' }}>
             <div className="hero-stat-num">5+</div>
-            <div className="hero-stat-lbl">Interactive Demos</div>
+            <div className="hero-stat-lbl">Visualizers</div>
           </div>
-          <div style={{ width: 1, height: 40, background: 'var(--border)' }} />
+          <div style={{ width: 1, height: 40, background: 'var(--border)', opacity: 0.6 }} />
           <div style={{ textAlign: 'center' }}>
-            <div className="hero-stat-num">3</div>
-            <div className="hero-stat-lbl">Topics</div>
+            <div className="hero-stat-num">500+</div>
+            <div className="hero-stat-lbl">DSA Problems</div>
           </div>
         </div>
       </section>
 
       {/* TOPICS GRID */}
       <section className="topics-section">
-        <div className="section-heading">Browse by Topic</div>
-        <h2 className="section-title">What do you want to learn?</h2>
+        <div className="section-heading">Explore Core Subjects</div>
+        <h2 className="section-title">What do you want to master today?</h2>
         <div className="topics-grid">
           {TOPICS.map(t => (
             <Link key={t.key} href={t.href} className="topic-card" style={{ '--card-color': t.color, '--card-color-dim': t.colorDim } as React.CSSProperties}>
@@ -109,8 +109,8 @@ export default function HomePage() {
 
       {/* FEATURED ARTICLES */}
       <section className="featured-section">
-        <div className="section-heading">Featured</div>
-        <h2 className="section-title">Most Popular Articles</h2>
+        <div className="section-heading">Handpicked Recommendations</div>
+        <h2 className="section-title">Most Popular Topics & Demos</h2>
         <div className="articles-list">
           {FEATURED.map((a, i) => (
             <Link key={a.href} href={a.href} className="article-list-item">
@@ -131,10 +131,10 @@ export default function HomePage() {
       {/* FOOTER */}
       <footer className="site-footer">
         <div className="footer-brand">ByteBook</div>
-        <div className="footer-text">Built for learners who want to go deep.</div>
+        <div className="footer-text">Crafted for computer science engineers who love depth and clarity.</div>
         <div className="footer-links">
           <Link href="/os/introduction">OS Notes</Link>
-          <Link href="/dsa/arrays">DSA</Link>
+          <Link href="/dsa/arrays">DSA Master Sheet</Link>
           <Link href="/algo/sorting">Algorithms</Link>
         </div>
       </footer>
