@@ -847,7 +847,7 @@ export function EditableCodeBlock({
                     flexShrink: 0,
                     opacity: 0.75
                   }}>{lineIdx + 1}</span>
-                  <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} style={{ flex: 1, whiteSpace: 'pre-wrap' }} />
+                  <span className="code-line-content" dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} style={{ flex: 1, whiteSpace: 'pre-wrap' }} />
                 </div>
               ))}
             </code>

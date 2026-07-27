@@ -165,7 +165,7 @@ export function StarredPageClient() {
   }
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: '100%' }}>
+    <div className="starred-root-container" style={{ padding: '32px 40px', maxWidth: '100%' }}>
 
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -225,6 +225,9 @@ export function StarredPageClient() {
 
         /* ── Print: clean notepad / gedit editor light style ── */
         @media print {
+          @page {
+            margin: 10mm 10mm;
+          }
           /* Reset backgrounds and enforce high fidelity printing */
           body {
             background: #ffffff !important;
@@ -236,42 +239,51 @@ export function StarredPageClient() {
             margin: 0 !important;
             font-size: 11pt !important;
           }
+          .starred-root-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
           .no-print, .revision-toc-sidebar, .hero-card, .tip-box {
             display: none !important;
           }
           .print-container {
             padding: 0 !important;
             margin: 0 !important;
+            width: 100% !important;
             max-width: 100% !important;
           }
           .revision-layout-with-toc {
             display: block !important;
+            width: 100% !important;
           }
           
           /* Premium Question Container Layout */
           .question-container {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            margin-bottom: 55px !important;
+            margin-bottom: 35px !important;
+            width: 100% !important;
           }
 
           /* Structure mappings from the template */
           .question-header {
             display: flex !important;
             align-items: flex-start !important;
-            gap: 16px !important;
-            margin-bottom: 14px !important;
+            gap: 12px !important;
+            margin-bottom: 8px !important;
           }
           .question-number { 
             color: #94a3b8 !important; 
             font-weight: 700 !important; 
-            font-size: 15pt !important; 
+            font-size: 13pt !important; 
             font-family: 'JetBrains Mono', monospace !important;
             font-variant-numeric: tabular-nums !important;
             margin-top: 2px !important;
           }
           .question-title { 
-            font-size: 19pt !important; 
+            font-size: 16pt !important; 
             font-weight: 700 !important; 
             color: #0f172a !important; 
             margin: 0 !important; 
@@ -281,14 +293,14 @@ export function StarredPageClient() {
           .metadata-row {
             display: flex !important;
             gap: 8px !important;
-            margin-bottom: 24px !important;
-            margin-left: 58px !important; 
+            margin-bottom: 14px !important;
+            margin-left: 0 !important; 
           }
           .badge {
             border: 1px solid #e2e8f0 !important;
             color: #475569 !important;
-            padding: 4px 12px !important;
-            font-size: 9.5pt !important;
+            padding: 3px 10px !important;
+            font-size: 9pt !important;
             font-weight: 600 !important;
             border-radius: 6px !important;
             background: #f8fafc !important;
@@ -297,10 +309,14 @@ export function StarredPageClient() {
 
           /* Premium code box container */
           .code-block-wrap {
-            border: 1px solid var(--border) !important;
+            border: 1px solid #cbd5e1 !important;
             box-shadow: none !important;
-            border-radius: 8px !important;
-            margin-left: 0 !important; 
+            border-radius: 6px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
             overflow: hidden !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
@@ -309,12 +325,12 @@ export function StarredPageClient() {
           }
           .code-block-header {
             font-family: 'JetBrains Mono', monospace !important;
-            font-size: 9.5pt !important;
-            font-weight: 500;
-            color: var(--text-3) !important;
-            border-bottom: 1px solid var(--border) !important;
-            padding: 8px 18px !important;
-            background-color: var(--surface-2) !important;
+            font-size: 9pt !important;
+            font-weight: 600;
+            color: #475569 !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding: 6px 14px !important;
+            background-color: #f8fafc !important;
             text-transform: uppercase !important;
             letter-spacing: 0.05em !important;
             display: flex !important;
@@ -327,34 +343,77 @@ export function StarredPageClient() {
           }
           .code-block-body {
             padding: 0 !important;
+            background: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           .code-block-body pre,
           .code-block-pre {
             margin: 0 !important;
-            padding: 16px 20px !important;
+            padding: 8px 12px !important;
             background: transparent !important;
             white-space: pre-wrap !important;
+            word-break: break-word !important;
             overflow: visible !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .code-line {
+            display: flex !important;
+            align-items: flex-start !important;
+            width: 100% !important;
+          }
+          .code-line-number {
+            width: 2.2em !important;
+            min-width: 2.2em !important;
+            text-align: right !important;
+            color: #64748b !important;
+            padding-right: 6px !important;
+            margin-right: 8px !important;
+            border-right: 1px solid #e2e8f0 !important;
+            user-select: none !important;
+            font-family: monospace !important;
+            font-size: 8.5pt !important;
+            line-height: 1.45 !important;
+            flex-shrink: 0 !important;
+            opacity: 0.8 !important;
+          }
+          .code-line-content {
+            flex: 1 !important;
+            min-width: 0 !important;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
+            font-size: 8.5pt !important;
+            line-height: 1.45 !important;
+            font-weight: 500 !important;
+            font-style: normal !important;
+            color: #0f172a !important;
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+            padding-left: 1.5em !important;
+            text-indent: -1.5em !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
           .code-block-body code,
           .code-block-body span {
-            font-family: 'JetBrains Mono', 'Ubuntu Mono', monospace !important;
-            font-size: 11pt !important;
-            line-height: 1.5 !important;
-            font-weight: 500 !important;
-            font-style: normal !important;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
+            font-size: 8.5pt !important;
+            line-height: 1.45 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
 
           /* Indentation guidelines style for high-quality printing */
           .indent-guide {
-            border-left: 1.2px dashed #94a3b8 !important;
-            opacity: 0.8 !important;
+            display: inline-block !important;
+            width: 4ch !important;
+            border-left: 1px dashed #cbd5e1 !important;
+            box-sizing: border-box !important;
+            height: 1.45em !important;
+            vertical-align: bottom !important;
+            opacity: 0.7 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }

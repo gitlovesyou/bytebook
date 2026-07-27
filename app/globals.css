@@ -794,6 +794,10 @@ html[data-theme="dark"] .shiki span {
    Hides headers/navigation and expands scroll containers
 ════════════════════════════════════════ */
 @media print {
+  @page {
+    margin: 10mm 10mm;
+  }
+
   /* Enforce standard clean black-on-white printable pages */
   body, html {
     background: #ffffff !important;
@@ -875,16 +879,52 @@ html[data-theme="dark"] .shiki span {
 
   .main-code-editor-pre span {
     font-family: 'JetBrains Mono', 'Ubuntu Mono', monospace !important;
-    font-size: 11pt !important;
-    line-height: 1.5 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.45 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
+  .code-line {
+    display: flex !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+  }
+
+  .code-line-number {
+    width: 2.2em !important;
+    min-width: 2.2em !important;
+    text-align: right !important;
+    color: #64748b !important;
+    padding-right: 6px !important;
+    margin-right: 8px !important;
+    border-right: 1px solid #e2e8f0 !important;
+    font-size: 8.5pt !important;
+    line-height: 1.45 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .code-line-content {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace !important;
+    font-size: 8.5pt !important;
+    line-height: 1.45 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    padding-left: 1.5em !important;
+    text-indent: -1.5em !important;
+  }
+
   /* Keep vertical indent guides visible on print */
   .indent-guide {
-    border-left: 1.2px dashed #94a3b8 !important;
-    opacity: 0.8 !important;
+    display: inline-block !important;
+    width: 4ch !important;
+    border-left: 1px dashed #cbd5e1 !important;
+    box-sizing: border-box !important;
+    height: 1.45em !important;
+    vertical-align: bottom !important;
+    opacity: 0.7 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
