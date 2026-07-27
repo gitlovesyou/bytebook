@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { NavSection } from '@/lib/navigation'
 import { DSA_DATA } from '@/lib/dsa-data'
 import { useProgress } from '@/hooks/useProgress'
@@ -248,15 +248,44 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
     }
   }, [])
 
-  // Auto-expand active topic when pathname changes
+  const sidebarRef = useRef<HTMLElement>(null)
+
+  // Auto-expand active topic & section when pathname changes
   useEffect(() => {
     if (pathname.startsWith('/dsa/')) {
       const slug = pathname.split('/').pop()
       if (slug) {
         setExpandedTopics(prev => ({ ...prev, [slug]: true }))
+        setCollapsed(prev => ({ ...prev, dsa: false }))
       }
+    } else if (pathname.startsWith('/os/')) {
+      setCollapsed(prev => ({ ...prev, os: false }))
     }
   }, [pathname])
+
+  // Auto-scroll sidebar to bring the searched or clicked question into smooth view
+  useEffect(() => {
+    if (!mounted) return
+
+    const timer = setTimeout(() => {
+      if (activeQId && sidebarRef.current) {
+        const activeQEl = sidebarRef.current.querySelector(`#sidebar-q-${activeQId}`)
+        if (activeQEl) {
+          activeQEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+      }
+
+      if (pathname && sidebarRef.current) {
+        const activeLink = sidebarRef.current.querySelector('.sidebar-link.active')
+        if (activeLink) {
+          activeLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }
+      }
+    }, 180)
+
+    return () => clearTimeout(timer)
+  }, [activeQId, pathname, expandedTopics, mounted])
 
   function toggleTopicExpand(slug: string, e: React.MouseEvent) {
     e.preventDefault()
@@ -317,7 +346,7 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
 
   return (
     <>
-      <nav className="sidebar" style={{ width: sidebarWidth }}>
+      <nav ref={sidebarRef} className="sidebar" style={{ width: sidebarWidth }}>
         {/* Compact Global Sidebar Filter Panel */}
         <div style={{
           margin: '14px 12px 6px',
@@ -687,6 +716,7 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                   return (
                                     <div
                                       key={child.href}
+                                      id={`sidebar-q-${child.id}`}
                                       style={{
                                         display: 'flex',
                                         alignItems: 'center',
