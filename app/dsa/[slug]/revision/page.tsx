@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Script from 'next/script'
 import { DSA_DATA } from '@/lib/dsa-data'
 import { prisma } from '@/lib/db'
 import type { Progress } from '@prisma/client'
@@ -324,8 +325,7 @@ export default async function DSARevisionPage({ params }: Props) {
       `}} />
 
       {/* Copy button script */}
-      <script dangerouslySetInnerHTML={{
-        __html: `
+      <Script id="revision-copy-code-script" strategy="afterInteractive">{`
         function copyCode(btn) {
           const code = decodeURIComponent(btn.getAttribute('data-code'));
           navigator.clipboard.writeText(code).then(() => {
@@ -337,7 +337,7 @@ export default async function DSARevisionPage({ params }: Props) {
             }, 2000);
           });
         }
-      `}} />
+      `}</Script>
 
       <div className="print-container">
         {/* Breadcrumb - Hidden on print */}

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import { Header } from '@/components/Header'
 import { Sidebar } from '@/components/Sidebar'
@@ -33,18 +34,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&family=Intel+One+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <script
+        <Script
           id="theme-loader"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                const t = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-                document.documentElement.setAttribute('data-theme', t);
-              } catch(e) {}
-            `
-          }}
-        />
+          strategy="beforeInteractive"
+        >{`
+          try {
+            const t = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+            document.documentElement.setAttribute('data-theme', t);
+          } catch(e) {}
+        `}</Script>
         <div className="layout-shell">
           <Header />
           <Sidebar nav={nav} />

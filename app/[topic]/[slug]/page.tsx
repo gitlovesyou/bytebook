@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Script from 'next/script'
 import { getPage, getAllSlugs, getAllTopics } from '@/lib/mdx'
 import { renderMarkdown, extractToc } from '@/lib/markdown'
 import { ReadingProgress } from '@/components/ReadingProgress'
@@ -73,7 +74,7 @@ export default async function ArticlePage({ params }: Props) {
           />
 
           {/* Copy button script */}
-          <script dangerouslySetInnerHTML={{ __html: `
+          <Script id="article-copy-code-script" strategy="afterInteractive">{`
             function copyCode(btn) {
               const code = decodeURIComponent(btn.getAttribute('data-code'));
               navigator.clipboard.writeText(code).then(() => {
@@ -85,7 +86,7 @@ export default async function ArticlePage({ params }: Props) {
                 }, 2000);
               });
             }
-          `}} />
+          `}</Script>
 
           {/* Prev / Next */}
           {(fm.prev || fm.next) && (
