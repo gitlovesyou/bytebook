@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import type { Topic } from '@/lib/dsa-data'
 import { useProgress } from '@/hooks/useProgress'
+import { isSuper150Question } from '@/lib/super150'
 import { PROBLEM_LINKS } from '@/lib/lc-links'
 import { compileAndRunCode } from '@/app/actions/progress'
 import { EditableCodeBlock } from '@/components/EditableCodeBlock'
@@ -2115,7 +2116,7 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
   const [newQuestionImportance, setNewQuestionImportance] = useState<'Crucial' | 'High' | 'Medium' | 'Low'>('Medium')
   const [newQuestionCompany, setNewQuestionCompany] = useState('')
   const [newQuestionPlatform, setNewQuestionPlatform] = useState<'LC' | 'GFG' | 'SPOJ' | 'CN' | 'Custom'>('LC')
-  const [sprintPreset, setSprintPreset] = useState<'all' | 'google-30' | 'amazon-fast' | 'meta-crucial' | 'microsoft-core' | 'review-due'>('all')
+  const [sprintPreset, setSprintPreset] = useState<'all' | 'super-150' | 'google-30' | 'amazon-fast' | 'meta-crucial' | 'microsoft-core' | 'review-due'>('all')
 
   const handleCopy = (text: string, e: React.MouseEvent<HTMLButtonElement>) => {
     navigator.clipboard.writeText(text)
@@ -2202,7 +2203,9 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
     let result = enrichedQuestions
 
     // Sprint preset filter
-    if (sprintPreset === 'google-30') {
+    if (sprintPreset === 'super-150') {
+      result = result.filter(q => isSuper150Question(q.id))
+    } else if (sprintPreset === 'google-30') {
       result = result.filter(q => q.companies.includes('Google') && (q.importance === 'Crucial' || q.importance === 'High'))
     } else if (sprintPreset === 'amazon-fast') {
       result = result.filter(q => q.companies.includes('Amazon') && q.frequency >= 55)
@@ -2312,6 +2315,7 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {[
                 { id: 'all', label: 'All Questions' },
+                { id: 'super-150', label: '⚡ Super 150 Sheet' },
                 { id: 'google-30', label: '🚀 Google 30-Day Sprint' },
                 { id: 'amazon-fast', label: '📦 Amazon Fast-Track' },
                 { id: 'meta-crucial', label: '♾️ Meta Crucials' },

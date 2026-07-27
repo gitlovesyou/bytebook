@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { NavSection } from '@/lib/navigation'
 import { DSA_DATA } from '@/lib/dsa-data'
 import { useProgress } from '@/hooks/useProgress'
+import { isSuper150Question } from '@/lib/super150'
 
 const COMPANIES = ['Google', 'Amazon', 'Meta', 'Microsoft', 'Netflix', 'Apple', 'Uber', 'Adobe']
 import dsaLinksRaw from '@/lib/dsa-links.json'
@@ -872,6 +873,11 @@ export function Sidebar({ nav }: { nav: NavSection[] }) {
                                         }}
                                         title={child.label}
                                       >
+                                        {isSuper150Question(child.id) && (
+                                          <span style={{ color: '#c084fc', fontWeight: 900, marginRight: 4 }} title="Super 150 Elite Question">
+                                            ••
+                                          </span>
+                                        )}
                                         {child.label}
                                       </Link>
                                     </div>

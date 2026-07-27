@@ -38,6 +38,7 @@ export async function getNavigation(): Promise<NavSection[]> {
       title: '📐 DSA Master Sheet',
       items: [
         { label: '📋 All Topics Overview', href: '/dsa', icon: '📋' },
+        { label: '⚡ Super 150 Sheet', href: '/dsa/super-150', icon: '⚡' },
         { label: 'Arrays', href: '/dsa/arrays', icon: '[]' },
         { label: '2D Arrays / Matrix', href: '/dsa/2d-arrays', icon: '⬛' },
         { label: 'Strings', href: '/dsa/strings', icon: '📝' },
