@@ -8,46 +8,10 @@ const STORAGE_CODE_KEY = 'bytebook_dsa_codes'
 const STORAGE_REVISIT_KEY = 'bytebook_dsa_revisit'
 
 export function useProgress() {
-  const [solved, setSolved] = useState<Set<number>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY)
-        if (raw) return new Set(JSON.parse(raw))
-      } catch {}
-    }
-    return new Set()
-  })
-  
-  const [revisit, setRevisit] = useState<Set<number>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(STORAGE_REVISIT_KEY)
-        if (raw) return new Set(JSON.parse(raw))
-      } catch {}
-    }
-    return new Set()
-  })
-
-  const [userCodes, setUserCodes] = useState<Record<number, string>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(STORAGE_CODE_KEY)
-        if (raw) return JSON.parse(raw)
-      } catch {}
-    }
-    return {}
-  })
-  
-  const [customQuestions, setCustomQuestions] = useState<any[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('bytebook_custom_questions')
-        if (raw) return JSON.parse(raw)
-      } catch {}
-    }
-    return []
-  })
-
+  const [solved, setSolved] = useState<Set<number>>(new Set())
+  const [revisit, setRevisit] = useState<Set<number>>(new Set())
+  const [userCodes, setUserCodes] = useState<Record<number, string>>({})
+  const [customQuestions, setCustomQuestions] = useState<any[]>([])
   const [loaded, setLoaded] = useState(false)
 
   // Sync custom questions across tabs/components
@@ -66,14 +30,31 @@ export function useProgress() {
     }
   }, [])
 
-  // 1. Initial Load: merge localStorage + DB, seed any local-only stars into DB
+  // 1. Initial Load: load localStorage first for fast UI update, then merge DB progress
   useEffect(() => {
-    // Read what was already in localStorage (the "old" stars before DB existed)
+    let localSolvedIds = new Set<number>()
     let localRevisitIds = new Set<number>()
+    let localCodes: Record<number, string> = {}
+    let localCustom: any[] = []
+
     try {
-      const raw = localStorage.getItem(STORAGE_REVISIT_KEY)
-      if (raw) localRevisitIds = new Set(JSON.parse(raw))
+      const rawSol = localStorage.getItem(STORAGE_KEY)
+      if (rawSol) localSolvedIds = new Set(JSON.parse(rawSol))
+
+      const rawRev = localStorage.getItem(STORAGE_REVISIT_KEY)
+      if (rawRev) localRevisitIds = new Set(JSON.parse(rawRev))
+
+      const rawCodes = localStorage.getItem(STORAGE_CODE_KEY)
+      if (rawCodes) localCodes = JSON.parse(rawCodes)
+
+      const rawCust = localStorage.getItem('bytebook_custom_questions')
+      if (rawCust) localCustom = JSON.parse(rawCust)
     } catch {}
+
+    setSolved(localSolvedIds)
+    setRevisit(localRevisitIds)
+    setUserCodes(localCodes)
+    setCustomQuestions(localCustom)
 
     getAllProgress().then(async records => {
       const solvedIds = new Set<number>()
