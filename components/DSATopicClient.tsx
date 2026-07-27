@@ -2103,7 +2103,7 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
     }
   }
   
-  const { solved, revisit, userCodes, toggle, toggleRevisit, saveCode, customQuestions, saveCustomQuestions, updateCustomQuestion } = useProgress()
+  const { solved, revisit, userCodes, reviewDates, toggle, toggleRevisit, saveCode, customQuestions, saveCustomQuestions, updateCustomQuestion } = useProgress()
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [newQuestionName, setNewQuestionName] = useState('')
@@ -2115,6 +2115,7 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
   const [newQuestionImportance, setNewQuestionImportance] = useState<'Crucial' | 'High' | 'Medium' | 'Low'>('Medium')
   const [newQuestionCompany, setNewQuestionCompany] = useState('')
   const [newQuestionPlatform, setNewQuestionPlatform] = useState<'LC' | 'GFG' | 'SPOJ' | 'CN' | 'Custom'>('LC')
+  const [sprintPreset, setSprintPreset] = useState<'all' | 'google-30' | 'amazon-fast' | 'meta-crucial' | 'microsoft-core' | 'review-due'>('all')
 
   const handleCopy = (text: string, e: React.MouseEvent<HTMLButtonElement>) => {
     navigator.clipboard.writeText(text)
@@ -2199,6 +2200,19 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
 
   const filtered = useMemo(() => {
     let result = enrichedQuestions
+
+    // Sprint preset filter
+    if (sprintPreset === 'google-30') {
+      result = result.filter(q => q.companies.includes('Google') && (q.importance === 'Crucial' || q.importance === 'High'))
+    } else if (sprintPreset === 'amazon-fast') {
+      result = result.filter(q => q.companies.includes('Amazon') && q.frequency >= 55)
+    } else if (sprintPreset === 'meta-crucial') {
+      result = result.filter(q => q.companies.includes('Meta') && q.importance === 'Crucial')
+    } else if (sprintPreset === 'microsoft-core') {
+      result = result.filter(q => q.companies.includes('Microsoft'))
+    } else if (sprintPreset === 'review-due') {
+      result = result.filter(q => (revisit?.has(q.id) || (reviewDates && reviewDates[q.id] && reviewDates[q.id] <= Date.now())))
+    }
     
     // Subtopic filter
     if (filter !== 'all') {
@@ -2243,7 +2257,7 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
     }
     
     return result
-  }, [enrichedQuestions, filter, selectedCompany, selectedImportance, sortBy, sortField, sortDirection])
+  }, [enrichedQuestions, filter, selectedCompany, selectedImportance, sprintPreset, reviewDates, revisit, sortBy, sortField, sortDirection])
 
   const active = activeQ !== null ? allQuestions.find(q => q.id === activeQ) : null
 
@@ -2290,6 +2304,42 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
           flexDirection: 'column',
           gap: 16
         }}>
+          {/* Row 0: Target Interview Sprints */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--brand)', minWidth: 90, display: 'flex', alignItems: 'center', gap: 4 }}>
+              🎯 Target Sprints:
+            </span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { id: 'all', label: 'All Questions' },
+                { id: 'google-30', label: '🚀 Google 30-Day Sprint' },
+                { id: 'amazon-fast', label: '📦 Amazon Fast-Track' },
+                { id: 'meta-crucial', label: '♾️ Meta Crucials' },
+                { id: 'microsoft-core', label: '💻 Microsoft Core' },
+                { id: 'review-due', label: '⏰ Due for Review (Spaced Repetition)' }
+              ].map(preset => (
+                <button
+                  key={preset.id}
+                  onClick={() => setSprintPreset(preset.id as any)}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 6,
+                    border: sprintPreset === preset.id ? '1px solid var(--brand-glow)' : '1px solid var(--border)',
+                    cursor: 'pointer',
+                    fontSize: 11.5,
+                    fontWeight: 800,
+                    transition: 'all 0.15s var(--ease)',
+                    background: sprintPreset === preset.id ? 'var(--brand)' : 'var(--surface-2)',
+                    color: sprintPreset === preset.id ? 'white' : 'var(--text-3)',
+                    boxShadow: sprintPreset === preset.id ? '0 0 12px var(--brand-dim)' : 'none'
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Row 1: Subtopic filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-4)', minWidth: 90 }}>Subtopics:</span>
@@ -2766,6 +2816,9 @@ export function DSATopicClient({ topic, phaseColor }: { topic: Topic; phaseColor
                               <span style={{ color: 'var(--brand-light)', fontWeight: 700 }}>{c.count} asks</span>
                             </div>
                           ))}
+                          <div style={{ marginTop: 4, paddingTop: 3, borderTop: '1px dotted var(--border)', fontSize: 8, color: 'var(--brand-light)', fontWeight: 800 }}>
+                            ✓ Q2 2026 FAANG Telemetry Audit
+                          </div>
                         </div>
                       </div>
 

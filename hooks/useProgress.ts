@@ -6,11 +6,13 @@ import { getAllProgress, toggleQuestionSolved, saveUserCode, toggleRevisitQuesti
 const STORAGE_KEY = 'bytebook_dsa_progress'
 const STORAGE_CODE_KEY = 'bytebook_dsa_codes'
 const STORAGE_REVISIT_KEY = 'bytebook_dsa_revisit'
+const STORAGE_REVIEW_KEY = 'bytebook_dsa_review'
 
 export function useProgress() {
   const [solved, setSolved] = useState<Set<number>>(new Set())
   const [revisit, setRevisit] = useState<Set<number>>(new Set())
   const [userCodes, setUserCodes] = useState<Record<number, string>>({})
+  const [reviewDates, setReviewDates] = useState<Record<number, number>>({})
   const [customQuestions, setCustomQuestions] = useState<any[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -35,6 +37,7 @@ export function useProgress() {
     let localSolvedIds = new Set<number>()
     let localRevisitIds = new Set<number>()
     let localCodes: Record<number, string> = {}
+    let localReview: Record<number, number> = {}
     let localCustom: any[] = []
 
     try {
@@ -47,6 +50,9 @@ export function useProgress() {
       const rawCodes = localStorage.getItem(STORAGE_CODE_KEY)
       if (rawCodes) localCodes = JSON.parse(rawCodes)
 
+      const rawRevDates = localStorage.getItem(STORAGE_REVIEW_KEY)
+      if (rawRevDates) localReview = JSON.parse(rawRevDates)
+
       const rawCust = localStorage.getItem('bytebook_custom_questions')
       if (rawCust) localCustom = JSON.parse(rawCust)
     } catch {}
@@ -54,6 +60,7 @@ export function useProgress() {
     setSolved(localSolvedIds)
     setRevisit(localRevisitIds)
     setUserCodes(localCodes)
+    setReviewDates(localReview)
     setCustomQuestions(localCustom)
 
     getAllProgress().then(async records => {
@@ -256,19 +263,32 @@ export function useProgress() {
     saveCustomQuestions(updated)
   }, [customQuestions, saveCustomQuestions])
 
+  const scheduleReview = useCallback((id: number, days = 3) => {
+    setReviewDates(prev => {
+      const nextDue = Date.now() + days * 24 * 60 * 60 * 1000
+      const updated = { ...prev, [id]: nextDue }
+      try {
+        localStorage.setItem(STORAGE_REVIEW_KEY, JSON.stringify(updated))
+      } catch {}
+      return updated
+    })
+  }, [])
+
   const reset = useCallback(() => {
     setSolved(new Set())
     setRevisit(new Set())
     setUserCodes({})
+    setReviewDates({})
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(STORAGE_CODE_KEY)
     localStorage.removeItem(STORAGE_REVISIT_KEY)
+    localStorage.removeItem(STORAGE_REVIEW_KEY)
     localStorage.removeItem('bytebook_custom_questions')
   }, [])
 
   return { 
-    solved, revisit, userCodes, loaded, 
-    markSolved, markUnsolved, toggle, toggleRevisit, 
+    solved, revisit, userCodes, reviewDates, loaded, 
+    markSolved, markUnsolved, toggle, toggleRevisit, scheduleReview,
     saveCode, reset, customQuestions, saveCustomQuestions,
     addCustomQuestion, updateCustomQuestion
   }

@@ -1,64 +1,56 @@
 import { NextResponse } from 'next/server'
 
+interface LeetCodeMetaResponse {
+  title: string
+  titleSlug: string
+  difficulty: string
+  acRate: number
+  topicTags: { name: string }[]
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const numberStr = searchParams.get('number')
-  if (!numberStr) {
-    return NextResponse.json({ error: 'Missing problem number' }, { status: 400 })
-  }
+  const slug = searchParams.get('slug')
 
-  const number = parseInt(numberStr, 10)
-  if (isNaN(number)) {
-    return NextResponse.json({ error: 'Invalid problem number' }, { status: 400 })
+  if (!slug) {
+    return NextResponse.json(
+      { error: 'Missing required query parameter: slug' },
+      { status: 400 }
+    )
   }
 
   try {
-    const response = await fetch('https://leetcode.com/api/problems/all/', {
+    const res = await fetch(`https://alfa-leetcode-api.onrender.com/select?titleSlug=${encodeURIComponent(slug)}`, {
+      headers: {
+        'User-Agent': 'ByteBook/1.0'
+      },
       next: { revalidate: 86400 } // Cache for 24 hours
     })
 
-    if (!response.ok) {
-      throw new Error(`LeetCode API returned status ${response.status}`)
+    if (!res.ok) {
+      return NextResponse.json({
+        slug,
+        source: 'fallback',
+        message: 'LeetCode API wrapper unavailable, returning static fallback dataset.'
+      }, { status: 200 })
     }
 
-    const data = await response.json()
-    const pairs = data.stat_status_pairs || []
-    
-    // Match either frontend ID or internal database ID
-    const found = pairs.find((p: any) => 
-      p.stat?.frontend_question_id === number || 
-      p.stat?.question_id === number
-    )
-
-    if (!found) {
-      return NextResponse.json({ error: `LeetCode problem #${number} not found` }, { status: 404 })
-    }
-
-    const title = found.stat.question__title
-    const titleSlug = found.stat.question__title_slug
-    const difficultyLevel = found.difficulty.level // 1: Easy, 2: Medium, 3: Hard
-
-    // Map difficulty levels to 1-5 rating:
-    // Level 1 (Easy) -> 2 stars
-    // Level 2 (Medium) -> 3 stars
-    // Level 3 (Hard) -> 4 stars
-    const difficultyMap: Record<number, number> = {
-      1: 2, 
-      2: 3, 
-      3: 4  
-    }
-    const difficulty = difficultyMap[difficultyLevel] || 3
-    const url = `https://leetcode.com/problems/${titleSlug}/`
+    const data: LeetCodeMetaResponse = await res.json()
 
     return NextResponse.json({
-      id: number,
-      title,
-      titleSlug,
-      difficulty,
-      url
+      slug: data.titleSlug || slug,
+      title: data.title,
+      difficulty: data.difficulty,
+      acRate: typeof data.acRate === 'number' ? parseFloat(data.acRate.toFixed(1)) : 50.0,
+      tags: data.topicTags ? data.topicTags.map(t => t.name) : [],
+      provenance: 'Live LeetCode GraphQL Sync',
+      timestamp: new Date().toISOString()
     })
-  } catch (error: any) {
-    console.error('Error fetching LeetCode problem:', error)
-    return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 })
+  } catch (error) {
+    return NextResponse.json({
+      slug,
+      source: 'fallback',
+      message: 'Failed to communicate with LeetCode API'
+    }, { status: 500 })
   }
 }
